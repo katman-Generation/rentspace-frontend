@@ -9,7 +9,7 @@ export default function Home() {
 
   const fetchSpaces = async (params = {}) => {
     try {
-      const res = await api.get("spaces/", {
+      const res = await api.get("api/spaces/", {
         params: params,
       });
       setSpaces(res.data);
