@@ -27,7 +27,7 @@ export default function SpaceDetail() {
   const toggleAvailability = async () => {
     try {
       setUpdating(true);
-      await api.patch(`spaces/update/${space.id}/`, {
+      await api.patch(`/api/spaces/update/${space.id}/`, {
         is_available: !space.is_available,
       });
       fetchSpace();

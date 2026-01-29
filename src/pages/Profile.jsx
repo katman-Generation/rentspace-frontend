@@ -21,8 +21,8 @@ export default function Profile() {
   const loadAll = async () => {
     try {
       const [profileRes, spacesRes] = await Promise.all([
-        api.get("api/profile/"),
-        api.get("api/spaces/my-spaces/"),
+        api.get("/api/profile/"),
+        api.get("/api/spaces/my-spaces/"),
       ]);
 
       setProfile(profileRes.data);
