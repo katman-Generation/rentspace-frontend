@@ -37,11 +37,11 @@ export default function Profile() {
   const saveProfile = async (e) => {
     e.preventDefault();
 
-    await api.patch("profile/", {
+    await api.patch("/api/profile/", {
       phone_number: phone,
     });
 
-    const res = await api.get("profile/");
+    const res = await api.get("/api/profile/");
     setProfile(res.data);
     setEditingProfile(false);
   };

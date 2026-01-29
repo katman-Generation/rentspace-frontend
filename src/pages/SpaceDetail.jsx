@@ -14,7 +14,7 @@ export default function SpaceDetail() {
   const [editing, setEditing] = useState(false);
 
   const fetchSpace = () => {
-    api.get(`spaces/${id}/`)
+    api.get(`/api/spaces/${id}/`)
       .then(res => setSpace(res.data))
       .catch(err => console.error(err))
       .finally(() => setLoading(false));
