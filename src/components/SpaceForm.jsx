@@ -22,8 +22,8 @@ export default function SpaceForm({ initialData = null, onSaved, onCancel }) {
 
   useEffect(() => {
     Promise.all([
-      api.get("spaces/locations/"),
-      api.get("spaces/space-types/"),
+      api.get("/api/spaces/locations/"),
+      api.get("/api/spaces/space-types/"),
     ]).then(([l, t]) => {
       setLocations(l.data);
       setSpaceTypes(t.data);
@@ -47,9 +47,9 @@ export default function SpaceForm({ initialData = null, onSaved, onCancel }) {
     });
 
     if (isEdit) {
-      await api.patch(`spaces/update/${initialData.id}/`, formData);
+      await api.patch(`/api/spaces/update/${initialData.id}/`, formData);
     } else {
-      await api.post("spaces/create/", formData);
+      await api.post("/api/spaces/create/", formData);
     }
 
     onSaved();

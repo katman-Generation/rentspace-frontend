@@ -26,7 +26,7 @@ export default function EditSpaceForm({ space, onUpdated }) {
       }
     });
 
-    await api.patch(`spaces/update/${space.id}/`, formData, {
+    await api.patch(`/api/spaces/update/${space.id}/`, formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
 

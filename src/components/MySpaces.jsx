@@ -10,12 +10,12 @@ export default function MySpaces() {
   }, []);
 
   const fetchSpaces = async () => {
-    const res = await api.get("spaces/my-spaces/");
+    const res = await api.get("/api/spaces/my-spaces/");
     setSpaces(res.data);
   };
 
   const toggleAvailability = async (space) => {
-    await api.patch(`spaces/update/${space.id}/`, {
+    await api.patch(`/api/spaces/update/${space.id}/`, {
       is_available: !space.is_available,
     });
     fetchSpaces();

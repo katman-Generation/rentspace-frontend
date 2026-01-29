@@ -17,8 +17,8 @@ export default function CreateSpaceForm({ onCreated }) {
 
   const fetchMeta = async () => {
     const [locRes, typeRes] = await Promise.all([
-      api.get("spaces/locations/"),
-      api.get("spaces/space-types/"),
+      api.get("/api/spaces/locations/"),
+      api.get("/api/spaces/space-types/"),
     ]);
 
     setLocations(locRes.data);
@@ -34,7 +34,7 @@ export default function CreateSpaceForm({ onCreated }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    await api.post("spaces/create/", {
+    await api.post("/api/spaces/create/", {
       title,
       description,
       price,
