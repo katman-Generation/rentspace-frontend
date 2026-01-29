@@ -8,7 +8,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   const login = async (username, password) => {
-    const res = await api.post("login/", { username, password });
+    const res = await api.post("/api/login/", { username, password });
 
     localStorage.setItem("access", res.data.access);
     localStorage.setItem("refresh", res.data.refresh);
@@ -18,7 +18,7 @@ export function AuthProvider({ children }) {
 
   // ✅ REGISTER
   const register = async (username, email, password) => {
-    await api.post("register/", { username, email, password });
+    await api.post("/api/register/", { username, email, password });
 
     // ✅ AUTO LOGIN WITH EMAIL (FIX)
     await login(email, password);
@@ -32,7 +32,7 @@ export function AuthProvider({ children }) {
     }
 
     try {
-      const res = await api.get("profile/");
+      const res = await api.get("/api/profile/");
       setUser(res.data);
     } catch {
       setUser(null);
