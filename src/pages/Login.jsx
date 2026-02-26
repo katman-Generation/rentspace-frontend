@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 
 export default function Login() {
   const { login } = useAuth();
@@ -10,16 +10,20 @@ export default function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
+    setLoading(true);
 
     try {
       await login(username, password);
       navigate("/");
     } catch {
-      setError("Invalid email or password");
+      setError("Invalid username or password");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -33,6 +37,15 @@ export default function Login() {
             Login
           </h2>
 
+          {loading && (
+            <div className="mb-4">
+              <div className="h-2 w-full bg-gray-200 rounded overflow-hidden">
+                <div className="h-full w-full bg-emerald-700 animate-pulse" />
+              </div>
+              <p className="text-xs text-gray-600 mt-1">Signing in...</p>
+            </div>
+          )}
+
           {error && (
             <p className="text-red-600 text-sm text-center mb-3">
               {error}
@@ -41,11 +54,12 @@ export default function Login() {
 
           <form onSubmit={handleLogin} className="space-y-4">
             <input
-              type="username"
+              type="text"
               placeholder="Username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-emerald-600 outline-none"
+              disabled={loading}
               required
             />
 
@@ -55,11 +69,15 @@ export default function Login() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-emerald-600 outline-none"
+              disabled={loading}
               required
             />
 
-            <button className="w-full bg-emerald-700 text-white py-2 rounded-lg">
-              Login
+            <button
+              disabled={loading}
+              className="w-full bg-emerald-700 text-white py-2 rounded-lg disabled:opacity-60"
+            >
+              {loading ? "Logging in..." : "Login"}
             </button>
           </form>
         </div>
@@ -67,4 +85,3 @@ export default function Login() {
     </>
   );
 }
-

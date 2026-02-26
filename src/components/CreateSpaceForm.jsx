@@ -12,24 +12,22 @@ export default function CreateSpaceForm({ onCreated }) {
   const [spaceTypes, setSpaceTypes] = useState([]);
 
   useEffect(() => {
-    fetchMeta();
-  }, []);
-
-  const fetchMeta = async () => {
-    const [locRes, typeRes] = await Promise.all([
+    let mounted = true;
+    Promise.all([
       api.get("/api/spaces/locations/"),
       api.get("/api/spaces/space-types/"),
-    ]);
+    ])
+      .then(([locRes, typeRes]) => {
+        if (!mounted) return;
+        setLocations(locRes.data);
+        setSpaceTypes(typeRes.data);
+      })
+      .catch((err) => console.error("Failed to load create form metadata", err));
 
-    setLocations(locRes.data);
-    setSpaceTypes(typeRes.data);
-  };
-  const MAX_SIZE = 500 * 1024 * 1024;
-
-  if (file.size > MAX_SIZE) {
-    alert("Image too large (max 500MB)");
-    return;
-  }
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -108,12 +106,6 @@ export default function CreateSpaceForm({ onCreated }) {
             </option>
           ))}
         </select>
-        <input
-          type="file"
-          multiple
-          accept="image/*"
-          onChange={handleImages}
-        />
 
         <button className="bg-emerald-700 text-white px-4 py-2 rounded">
           Create Space

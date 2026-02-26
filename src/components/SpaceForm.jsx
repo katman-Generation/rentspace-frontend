@@ -1,9 +1,18 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../api/api";
 import ImagePicker from "./ImagePicker";
 
-export default function SpaceForm({ initialData = null, onSaved, onCancel }) {
+export default function SpaceForm({
+  initialData = null,
+  onSaved,
+  onCreated,
+  onCancel = () => {},
+}) {
   const isEdit = Boolean(initialData);
+  const navigate = useNavigate();
+  const progressTimerRef = useRef(null);
+  const redirectTimerRef = useRef(null);
 
   const [title, setTitle] = useState(initialData?.title || "");
   const [description, setDescription] = useState(initialData?.description || "");
@@ -19,6 +28,15 @@ export default function SpaceForm({ initialData = null, onSaved, onCancel }) {
 
   const [locations, setLocations] = useState([]);
   const [spaceTypes, setSpaceTypes] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const notifySaved = () => {
+    if (typeof onSaved === "function") onSaved();
+    if (typeof onCreated === "function") onCreated();
+  };
 
   useEffect(() => {
     Promise.all([
@@ -30,8 +48,23 @@ export default function SpaceForm({ initialData = null, onSaved, onCancel }) {
     });
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+      if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
+    };
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setErrorMessage("");
+    setSuccessMessage("");
+    setProgress(15);
+    setIsSubmitting(true);
+
+    progressTimerRef.current = setInterval(() => {
+      setProgress((prev) => (prev < 90 ? prev + 8 : prev));
+    }, 150);
 
     const formData = new FormData();
     formData.append("title", title);
@@ -46,13 +79,36 @@ export default function SpaceForm({ initialData = null, onSaved, onCancel }) {
       }
     });
 
-    if (isEdit) {
-      await api.patch(`/api/spaces/update/${initialData.id}/`, formData);
-    } else {
-      await api.post("/api/spaces/create/", formData);
-    }
+    try {
+      if (isEdit) {
+        await api.patch(`/api/spaces/update/${initialData.id}/`, formData);
+      } else {
+        await api.post("/api/spaces/create/", formData);
+      }
 
-    onSaved();
+      if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+      setProgress(100);
+
+      if (isEdit) {
+        setSuccessMessage("Space updated successfully.");
+        notifySaved();
+        setIsSubmitting(false);
+        return;
+      }
+
+      setSuccessMessage("Space created successfully. Redirecting to profile...");
+      redirectTimerRef.current = setTimeout(() => {
+        notifySaved();
+        navigate("/profile");
+      }, 1200);
+    } catch (error) {
+      if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+      setProgress(0);
+      setErrorMessage(
+        error?.response?.data?.detail || "Failed to save space. Please try again."
+      );
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -60,6 +116,23 @@ export default function SpaceForm({ initialData = null, onSaved, onCancel }) {
       <h2 className="text-xl font-semibold mb-4">
         {isEdit ? "Edit Space" : "Add New Space"}
       </h2>
+
+      {isSubmitting && (
+        <div className="mb-4">
+          <div className="w-full h-2 bg-gray-200 rounded overflow-hidden">
+            <div
+              className="h-full bg-emerald-700 transition-all duration-150"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <p className="text-xs text-gray-600 mt-1">Saving... {progress}%</p>
+        </div>
+      )}
+
+      {successMessage && (
+        <p className="mb-3 text-sm text-emerald-700">{successMessage}</p>
+      )}
+      {errorMessage && <p className="mb-3 text-sm text-red-600">{errorMessage}</p>}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <ImagePicker images={images} setImages={setImages} />
@@ -69,6 +142,7 @@ export default function SpaceForm({ initialData = null, onSaved, onCancel }) {
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Title"
           className="w-full border px-3 py-2 rounded"
+          disabled={isSubmitting}
           required
         />
 
@@ -77,6 +151,7 @@ export default function SpaceForm({ initialData = null, onSaved, onCancel }) {
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Description"
           className="w-full border px-3 py-2 rounded"
+          disabled={isSubmitting}
           required
         />
 
@@ -86,6 +161,7 @@ export default function SpaceForm({ initialData = null, onSaved, onCancel }) {
           onChange={(e) => setPrice(e.target.value)}
           placeholder="Price"
           className="w-full border px-3 py-2 rounded"
+          disabled={isSubmitting}
           required
         />
 
@@ -93,6 +169,7 @@ export default function SpaceForm({ initialData = null, onSaved, onCancel }) {
           value={locationId}
           onChange={(e) => setLocationId(e.target.value)}
           className="w-full border px-3 py-2 rounded"
+          disabled={isSubmitting}
           required
         >
           <option value="">Select location</option>
@@ -107,6 +184,7 @@ export default function SpaceForm({ initialData = null, onSaved, onCancel }) {
           value={spaceTypeId}
           onChange={(e) => setSpaceTypeId(e.target.value)}
           className="w-full border px-3 py-2 rounded"
+          disabled={isSubmitting}
           required
         >
           <option value="">Select space type</option>
@@ -118,12 +196,16 @@ export default function SpaceForm({ initialData = null, onSaved, onCancel }) {
         </select>
 
         <div className="flex gap-3 pt-4">
-          <button className="bg-emerald-700 text-white px-4 py-2 rounded">
-            Save
+          <button
+            disabled={isSubmitting}
+            className="bg-emerald-700 text-white px-4 py-2 rounded disabled:opacity-60"
+          >
+            {isSubmitting ? "Saving..." : "Save"}
           </button>
           <button
             type="button"
             onClick={onCancel}
+            disabled={isSubmitting}
             className="border px-4 py-2 rounded"
           >
             Cancel

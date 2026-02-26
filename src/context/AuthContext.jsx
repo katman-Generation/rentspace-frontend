@@ -1,7 +1,6 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import api from "../api/api";
-
-const AuthContext = createContext();
+import { AuthContext } from "./auth-context";
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -20,8 +19,7 @@ export function AuthProvider({ children }) {
   const register = async (username, email, password) => {
     await api.post("/api/register/", { username, email, password });
 
-    // ✅ AUTO LOGIN WITH EMAIL (FIX)
-    await login(email, password);
+    await login(username, password);
   };
 
   const fetchProfile = async () => {
@@ -58,6 +56,3 @@ export function AuthProvider({ children }) {
     </AuthContext.Provider>
   );
 }
-
-export const useAuth = () => useContext(AuthContext);
-

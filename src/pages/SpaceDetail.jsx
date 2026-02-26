@@ -1,28 +1,27 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import api from "../api/api";
 import SpaceForm from "../components/SpaceForm";
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export default function SpaceDetail() {
   const { id } = useParams();
-  const navigate = useNavigate();
 
   const [space, setSpace] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [editing, setEditing] = useState(false);
 
-  const fetchSpace = () => {
+  const fetchSpace = useCallback(() => {
     api.get(`/api/spaces/${id}/`)
-      .then(res => setSpace(res.data))
-      .catch(err => console.error(err))
+      .then((res) => setSpace(res.data))
+      .catch((err) => console.error(err))
       .finally(() => setLoading(false));
-  };
+  }, [id]);
 
   useEffect(() => {
     fetchSpace();
-  }, [id]);
+  }, [fetchSpace]);
 
   const toggleAvailability = async () => {
     try {

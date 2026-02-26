@@ -19,7 +19,19 @@ export default function Home() {
   };
 
   useEffect(() => {
-    fetchSpaces(); // initial load (no filters)
+    let mounted = true;
+    api
+      .get("/api/spaces/")
+      .then((res) => {
+        if (mounted) {
+          setSpaces(res.data);
+        }
+      })
+      .catch((err) => console.error("Failed to fetch spaces", err));
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   return (

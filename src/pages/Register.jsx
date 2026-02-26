@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 
 export default function Register() {
   const { register } = useAuth();
@@ -21,7 +21,7 @@ export default function Register() {
     try {
       await register(username, email, password);
       navigate("/"); // ✅ success
-    } catch (err) {
+    } catch {
       setError("Registration failed. Try a different username or email.");
     } finally {
       setLoading(false);
@@ -38,6 +38,15 @@ export default function Register() {
             Create Account
           </h2>
 
+          {loading && (
+            <div className="mb-4">
+              <div className="h-2 w-full bg-gray-200 rounded overflow-hidden">
+                <div className="h-full w-full bg-red-600 animate-pulse" />
+              </div>
+              <p className="text-xs text-gray-600 mt-1">Creating account...</p>
+            </div>
+          )}
+
           {error && (
             <p className="text-red-600 text-sm text-center mb-3">
               {error}
@@ -51,6 +60,7 @@ export default function Register() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-red-600 outline-none"
+              disabled={loading}
               required
             />
 
@@ -60,6 +70,7 @@ export default function Register() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-red-600 outline-none"
+              disabled={loading}
               required
             />
 
@@ -69,6 +80,7 @@ export default function Register() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-red-600 outline-none"
+              disabled={loading}
               required
             />
 

@@ -6,7 +6,19 @@ export default function MySpaces() {
   const [spaces, setSpaces] = useState([]);
 
   useEffect(() => {
-    fetchSpaces();
+    let mounted = true;
+    api
+      .get("/api/spaces/my-spaces/")
+      .then((res) => {
+        if (mounted) {
+          setSpaces(res.data);
+        }
+      })
+      .catch((err) => console.error("Failed to fetch spaces", err));
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const fetchSpaces = async () => {
