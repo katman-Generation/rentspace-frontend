@@ -17,7 +17,14 @@ export function AuthProvider({ children }) {
 
   // ✅ REGISTER
   const register = async (username, email, password) => {
-    await api.post("/api/register/", { username, email, password });
+    const res = await api.post("/api/register/", { username, email, password });
+
+    if (res?.data?.access && res?.data?.refresh) {
+      localStorage.setItem("access", res.data.access);
+      localStorage.setItem("refresh", res.data.refresh);
+      await fetchProfile();
+      return;
+    }
 
     await login(username, password);
   };

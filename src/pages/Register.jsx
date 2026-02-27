@@ -21,8 +21,15 @@ export default function Register() {
     try {
       await register(username, email, password);
       navigate("/"); // ✅ success
-    } catch {
-      setError("Registration failed. Try a different username or email.");
+    } catch (err) {
+      const serverMessage =
+        err?.response?.data?.detail ||
+        err?.response?.data?.username?.[0] ||
+        err?.response?.data?.email?.[0];
+      setError(
+        serverMessage ||
+          "Registration failed. Try a different username or email."
+      );
     } finally {
       setLoading(false);
     }

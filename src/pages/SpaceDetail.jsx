@@ -11,6 +11,7 @@ export default function SpaceDetail() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [activeImage, setActiveImage] = useState(0);
 
   const fetchSpace = useCallback(() => {
     api.get(`/api/spaces/${id}/`)
@@ -22,6 +23,16 @@ export default function SpaceDetail() {
   useEffect(() => {
     fetchSpace();
   }, [fetchSpace]);
+
+  useEffect(() => {
+    if (!space?.images?.length) {
+      setActiveImage(0);
+      return;
+    }
+    setActiveImage((prev) =>
+      prev >= space.images.length ? 0 : prev
+    );
+  }, [space?.images?.length]);
 
   const toggleAvailability = async () => {
     try {
@@ -47,23 +58,56 @@ export default function SpaceDetail() {
         )}`
       : null;
 
+  const images = space?.images || [];
+  const hasImages = images.length > 0;
+
   return (
     <>
       <Navbar />
 
       <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
 
-        {/* IMAGE */}
-        {space.images.length > 0 && (
-          <img
-            src={space.images[0].image}
-            alt={space.title}
-            className="w-full h-96 object-cover rounded-2xl"
-          />
-        )}
+        {/* IMAGES */}
+        <div className="space-y-3">
+          <div className="w-full aspect-[16/9] bg-gray-100 rounded-2xl overflow-hidden">
+            <img
+              src={
+                hasImages
+                  ? images[activeImage]?.image
+                  : "/placeholder-space.jpg"
+              }
+              alt={space.title}
+              className="w-full h-full object-cover"
+            />
+          </div>
+
+          {hasImages && (
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+              {images.map((img, index) => (
+                <button
+                  key={img.id || index}
+                  type="button"
+                  onClick={() => setActiveImage(index)}
+                  className={`aspect-[4/3] rounded-lg overflow-hidden border ${
+                    activeImage === index
+                      ? "border-emerald-600 ring-2 ring-emerald-200"
+                      : "border-transparent"
+                  }`}
+                  aria-label={`View image ${index + 1}`}
+                >
+                  <img
+                    src={img.image}
+                    alt={`${space.title} ${index + 1}`}
+                    className="w-full h-full object-cover"
+                  />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* HEADER */}
-        <div className="flex justify-between items-start gap-4">
+        <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4">
 
           <div>
             <h1 className="text-3xl font-bold text-gray-800 mb-2">
@@ -97,23 +141,13 @@ export default function SpaceDetail() {
 
           {/* OWNER CONTROLS */}
           {space.is_owner && (
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => setEditing(true)}
                 className="px-4 py-2 bg-gray-800 text-white rounded-lg"
               >
                 Edit
               </button>
-              {editing && (
-                <SpaceForm
-                  initialData={space}
-                  onSaved={() => {
-                    setEditing(false);
-                    fetchSpace();
-                  }}
-                  onCancel={() => setEditing(false)}
-                />
-              )}
 
               <button
                 disabled={updating}
@@ -129,6 +163,19 @@ export default function SpaceDetail() {
             </div>
           )}
         </div>
+
+        {space.is_owner && editing && (
+          <div className="w-full">
+            <SpaceForm
+              initialData={space}
+              onSaved={() => {
+                setEditing(false);
+                fetchSpace();
+              }}
+              onCancel={() => setEditing(false)}
+            />
+          </div>
+        )}
 
         {/* DESCRIPTION */}
         <p className="text-gray-700 leading-relaxed">
