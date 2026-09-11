@@ -1,87 +1,109 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Navbar from "../components/Navbar";
+
+import AuthLayout from "../components/AuthLayout";
 import { useAuth } from "../context/useAuth";
 
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+
     setError("");
     setLoading(true);
 
     try {
-      await login(username, password);
+      await login(email, password);
       navigate("/");
-    } catch {
-      setError("Invalid username or password");
+    } catch (err) {
+      console.error(err);
+      setError("Invalid email or password.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <>
-      <Navbar />
+    <AuthLayout
+      title="Welcome back."
+      subtitle="Sign in to continue discovering spaces across Zimbabwe."
+      footerText="Don't have an account?"
+      footerLinkText="Create one"
+      footerLink="/register"
+    >
+      <form onSubmit={handleSubmit} className="space-y-5">
 
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="bg-white p-6 rounded-2xl shadow-sm w-full max-w-md border-t-4 border-emerald-700">
-          <h2 className="text-2xl font-bold text-emerald-700 mb-6 text-center">
-            Login
-          </h2>
+        {error && (
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+            {error}
+          </div>
+        )}
 
-          {loading && (
-            <div className="mb-4">
-              <div className="h-2 w-full bg-gray-200 rounded overflow-hidden">
-                <div className="h-full w-full bg-emerald-700 animate-pulse" />
-              </div>
-              <p className="text-xs text-gray-600 mt-1">Signing in...</p>
-            </div>
-          )}
+        {/* Email */}
+        <div>
+          <label
+            htmlFor="email"
+            className="mb-2 block text-sm font-semibold text-[#1d2923]"
+          >
+            Email address
+          </label>
 
-          {error && (
-            <p className="text-red-600 text-sm text-center mb-3">
-              {error}
-            </p>
-          )}
-
-          <form onSubmit={handleLogin} className="space-y-4">
-            <input
-              type="text"
-              placeholder="Username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-emerald-600 outline-none"
-              disabled={loading}
-              required
-            />
-
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-emerald-600 outline-none"
-              disabled={loading}
-              required
-            />
-
-            <button
-              disabled={loading}
-              className="w-full bg-emerald-700 text-white py-2 rounded-lg disabled:opacity-60"
-            >
-              {loading ? "Logging in..." : "Login"}
-            </button>
-          </form>
+          <input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            required
+            autoComplete="email"
+            className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3.5 text-sm text-[#1d2923] outline-none transition placeholder:text-gray-400 focus:border-[#155c3a] focus:ring-4 focus:ring-[#155c3a]/10"
+          />
         </div>
-      </div>
-    </>
+
+        {/* Password */}
+        <div>
+          <label
+            htmlFor="password"
+            className="mb-2 block text-sm font-semibold text-[#1d2923]"
+          >
+            Password
+          </label>
+
+          <input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Enter your password"
+            required
+            autoComplete="current-password"
+            className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3.5 text-sm text-[#1d2923] outline-none transition placeholder:text-gray-400 focus:border-[#155c3a] focus:ring-4 focus:ring-[#155c3a]/10"
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="group flex w-full items-center justify-center gap-2 rounded-2xl bg-[#155c3a] px-5 py-4 font-semibold text-white shadow-lg transition duration-300 hover:-translate-y-0.5 hover:bg-[#0d3f29] hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {loading ? "Signing in..." : "Sign in"}
+
+          {!loading && (
+            <span className="transition-transform duration-300 group-hover:translate-x-1">
+              →
+            </span>
+          )}
+        </button>
+
+      </form>
+    </AuthLayout>
   );
 }

@@ -6,6 +6,7 @@ import SpaceDetail from './pages/SpaceDetail';
 import PostSpace from './pages/PostSpace';
 import PrivateRoute from './components/PrivateRoute';
 import Profile from './pages/Profile';
+import About from './pages/About';
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/space/:id" element={<SpaceDetail />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/about" element={<About />} />
         <Route
           path="/post-space"
           element={

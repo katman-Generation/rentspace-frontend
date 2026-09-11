@@ -6,8 +6,12 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const login = async (username, password) => {
-    const res = await api.post("/api/login/", { username, password });
+  // LOGIN
+  const login = async (email, password) => {
+    const res = await api.post("/api/login/", {
+      email,
+      password,
+    });
 
     localStorage.setItem("access", res.data.access);
     localStorage.setItem("refresh", res.data.refresh);
@@ -15,22 +19,38 @@ export function AuthProvider({ children }) {
     await fetchProfile();
   };
 
-  // ✅ REGISTER
-  const register = async (username, email, password) => {
-    const res = await api.post("/api/register/", { username, email, password });
+  // REGISTER
+  const register = async (
+    email,
+    firstName,
+    lastName,
+    phoneNumber,
+    password
+  ) => {
+    const res = await api.post("/api/register/", {
+      email,
+      first_name: firstName,
+      last_name: lastName,
+      phone_number: phoneNumber,
+      password,
+    });
 
     if (res?.data?.access && res?.data?.refresh) {
       localStorage.setItem("access", res.data.access);
       localStorage.setItem("refresh", res.data.refresh);
+
       await fetchProfile();
       return;
     }
 
-    await login(username, password);
+    // Fallback: login after registration
+    await login(email, password);
   };
 
+  // FETCH PROFILE
   const fetchProfile = async () => {
     const token = localStorage.getItem("access");
+
     if (!token) {
       setLoading(false);
       return;
@@ -46,8 +66,10 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // LOGOUT
   const logout = () => {
-    localStorage.clear();
+    localStorage.removeItem("access");
+    localStorage.removeItem("refresh");
     setUser(null);
   };
 
@@ -57,7 +79,13 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, login, register, logout, loading }}
+      value={{
+        user,
+        login,
+        register,
+        logout,
+        loading,
+      }}
     >
       {!loading && children}
     </AuthContext.Provider>
