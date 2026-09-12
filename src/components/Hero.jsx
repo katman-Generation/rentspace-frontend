@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import heroImage from "../assets/rentspace-hero.jpeg";
+import heroImage from "../assets/rentspace-hero.jpg";
 
 export default function Hero() {
   return (
@@ -90,10 +90,58 @@ export default function Hero() {
           <div className="mt-12 flex flex-wrap gap-x-8 gap-y-4">
 
             <TrustPoint text="Spaces across Zimbabwe" />
-
             <TrustPoint text="Connect directly" />
-
             <TrustPoint text="Built for Zimbabwe" />
+
+          </div>
+
+        </div>
+
+        {/* FLOATING PROPERTY CARD */}
+        <div className="absolute bottom-16 right-5 hidden w-64 rotate-2 sm:block lg:right-10">
+
+          <div className="relative overflow-hidden rounded-[1.75rem] border border-white/20 bg-white/10 p-2 shadow-2xl backdrop-blur-md">
+
+            {/* IMAGE */}
+            <div className="relative h-36 overflow-hidden rounded-[1.25rem]">
+
+              <img
+                src={heroImage}
+                alt="Property available on RentSpace"
+                className="h-full w-full object-cover transition duration-700 hover:scale-105"
+              />
+
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+
+              {/* AVAILABLE BADGE */}
+              <div className="absolute left-3 top-3 rounded-full border border-white/20 bg-black/30 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-md">
+                Explore
+              </div>
+
+            </div>
+
+            {/* CARD CONTENT */}
+            <div className="px-3 pb-2 pt-3">
+
+              <div className="flex items-center justify-between">
+
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-white/50">
+                    RentSpace
+                  </p>
+
+                  <p className="mt-1 text-sm font-bold text-white">
+                    Find your next space
+                  </p>
+                </div>
+
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#e5ad35] text-[#0d3b2e] shadow-lg">
+                  →
+                </div>
+
+              </div>
+
+            </div>
 
           </div>
 
@@ -102,7 +150,7 @@ export default function Hero() {
       </div>
 
       {/* BOTTOM TRANSITION */}
-      <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#0d3b2e]/40 to-transparent pointer-events-none" />
+      <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#0d3b2e]/50 to-transparent" />
 
     </section>
   );
