@@ -15,26 +15,90 @@ export default function SpaceForm({
   const progressTimerRef = useRef(null);
   const redirectTimerRef = useRef(null);
 
+  /* =========================
+     FORM STATE
+  ========================= */
+
   const [title, setTitle] = useState(initialData?.title || "");
   const [description, setDescription] = useState(
     initialData?.description || ""
   );
+
   const [price, setPrice] = useState(initialData?.price || "");
-  const [locationId, setLocationId] = useState(
-    initialData?.location?.id || ""
+  const [deposit, setDeposit] = useState(initialData?.deposit || "");
+
+  const [categoryId, setCategoryId] = useState(
+    initialData?.category?.id || ""
   );
+
   const [spaceTypeId, setSpaceTypeId] = useState(
     initialData?.space_type?.id || ""
   );
 
+  const [locationId, setLocationId] = useState(
+    initialData?.location?.id || ""
+  );
+
+  const [rentalPeriod, setRentalPeriod] = useState(
+    initialData?.rental_period || "month"
+  );
+
+  const [availableFrom, setAvailableFrom] = useState(
+    initialData?.available_from || ""
+  );
+
+  const [bedrooms, setBedrooms] = useState(
+    initialData?.bedrooms ?? ""
+  );
+
+  const [bathrooms, setBathrooms] = useState(
+    initialData?.bathrooms ?? ""
+  );
+
+  const [parkingSpaces, setParkingSpaces] = useState(
+    initialData?.parking_spaces ?? ""
+  );
+
+  const [floorArea, setFloorArea] = useState(
+    initialData?.floor_area ?? ""
+  );
+
+  const [capacity, setCapacity] = useState(
+    initialData?.capacity ?? ""
+  );
+
+  const [furnished, setFurnished] = useState(
+    initialData?.furnished ?? ""
+  );
+
+  const [isAvailable, setIsAvailable] = useState(
+    initialData?.is_available ?? true
+  );
+
+  const [amenityIds, setAmenityIds] = useState(
+    initialData?.amenities?.map((amenity) => amenity.id) || []
+  );
+
   const [images, setImages] = useState(
     initialData?.images?.length
-      ? initialData.images.map((i) => i.image)
+      ? initialData.images.map((image) => image.image)
       : []
   );
 
-  const [locations, setLocations] = useState([]);
+  /* =========================
+     DATABASE OPTIONS
+  ========================= */
+
+  const [categories, setCategories] = useState([]);
   const [spaceTypes, setSpaceTypes] = useState([]);
+  const [locations, setLocations] = useState([]);
+  const [amenities, setAmenities] = useState([]);
+
+  const [loadingOptions, setLoadingOptions] = useState(true);
+
+  /* =========================
+     STATUS
+  ========================= */
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -42,34 +106,120 @@ export default function SpaceForm({
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
-  const notifySaved = () => {
-    if (typeof onSaved === "function") onSaved();
-    if (typeof onCreated === "function") onCreated();
-  };
+  /* =========================
+     LOAD DATABASE OPTIONS
+  ========================= */
 
-  /* LOAD FORM OPTIONS */
   useEffect(() => {
     const loadOptions = async () => {
+      setLoadingOptions(true);
+      setErrorMessage("");
+
       try {
-        const [locationsResponse, typesResponse] = await Promise.all([
-          api.get("/api/spaces/locations/"),
+        const [
+          categoriesResponse,
+          typesResponse,
+          locationsResponse,
+          amenitiesResponse,
+        ] = await Promise.all([
+          api.get("/api/spaces/categories/"),
           api.get("/api/spaces/space-types/"),
+          api.get("/api/spaces/locations/"),
+          api.get("/api/spaces/amenities/"),
         ]);
 
-        setLocations(locationsResponse.data);
-        setSpaceTypes(typesResponse.data);
+        /*
+         * Support both:
+         *
+         * [
+         *   {...},
+         *   {...}
+         * ]
+         *
+         * and DRF:
+         *
+         * {
+         *   results: [...]
+         * }
+         */
+
+        const getResults = (response) => {
+          if (Array.isArray(response?.data)) {
+            return response.data;
+          }
+
+          if (Array.isArray(response?.data?.results)) {
+            return response.data.results;
+          }
+
+          return [];
+        };
+
+        setCategories(getResults(categoriesResponse));
+        setSpaceTypes(getResults(typesResponse));
+        setLocations(getResults(locationsResponse));
+        setAmenities(getResults(amenitiesResponse));
       } catch (error) {
         console.error("Failed to load space options:", error);
+
         setErrorMessage(
-          "We couldn't load locations and space types. Please refresh and try again."
+          "We couldn't load the space options. Please refresh the page and try again."
         );
+      } finally {
+        setLoadingOptions(false);
       }
     };
 
     loadOptions();
   }, []);
 
-  /* CLEANUP */
+  /* =========================
+     FILTER SPACE TYPES
+     BY CATEGORY
+  ========================= */
+
+  const filteredSpaceTypes = categoryId
+    ? spaceTypes.filter(
+        (type) => String(type.category) === String(categoryId)
+      )
+    : [];
+
+  /* =========================
+     CATEGORY CHANGE
+  ========================= */
+
+  const handleCategoryChange = (e) => {
+    const newCategoryId = e.target.value;
+
+    setCategoryId(newCategoryId);
+
+    /*
+     * A space type belongs to a category.
+     * Therefore when the category changes,
+     * reset the selected space type.
+     */
+
+    setSpaceTypeId("");
+  };
+
+  /* =========================
+     AMENITY TOGGLE
+  ========================= */
+
+  const toggleAmenity = (amenityId) => {
+    setAmenityIds((current) => {
+      if (current.includes(amenityId)) {
+        return current.filter((id) => id !== amenityId);
+      }
+
+      return [...current, amenityId];
+    });
+  };
+
+  /* =========================
+     CLEANUP
+  ========================= */
+
   useEffect(() => {
     return () => {
       if (progressTimerRef.current) {
@@ -82,12 +232,31 @@ export default function SpaceForm({
     };
   }, []);
 
-  /* SUBMIT */
+  /* =========================
+     SUBMIT
+  ========================= */
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     setErrorMessage("");
     setSuccessMessage("");
+
+    if (!categoryId) {
+      setErrorMessage("Please choose a category.");
+      return;
+    }
+
+    if (!spaceTypeId) {
+      setErrorMessage("Please choose a space type.");
+      return;
+    }
+
+    if (!locationId) {
+      setErrorMessage("Please choose a location.");
+      return;
+    }
+
     setProgress(15);
     setIsSubmitting(true);
 
@@ -97,15 +266,63 @@ export default function SpaceForm({
 
     const formData = new FormData();
 
+    /* Required fields */
+
     formData.append("title", title);
     formData.append("description", description);
     formData.append("price", price);
-    formData.append("location_id", locationId);
+    formData.append("category_id", categoryId);
     formData.append("space_type_id", spaceTypeId);
+    formData.append("location_id", locationId);
+    formData.append("rental_period", rentalPeriod);
 
-    images.forEach((img) => {
-      if (img instanceof File) {
-        formData.append("images", img);
+    /* Optional fields */
+
+    if (deposit !== "") {
+      formData.append("deposit", deposit);
+    }
+
+    if (availableFrom) {
+      formData.append("available_from", availableFrom);
+    }
+
+    if (bedrooms !== "") {
+      formData.append("bedrooms", bedrooms);
+    }
+
+    if (bathrooms !== "") {
+      formData.append("bathrooms", bathrooms);
+    }
+
+    if (parkingSpaces !== "") {
+      formData.append("parking_spaces", parkingSpaces);
+    }
+
+    if (floorArea !== "") {
+      formData.append("floor_area", floorArea);
+    }
+
+    if (capacity !== "") {
+      formData.append("capacity", capacity);
+    }
+
+    if (furnished !== "") {
+      formData.append("furnished", furnished);
+    }
+
+    formData.append("is_available", isAvailable);
+
+    /* Amenities */
+
+    amenityIds.forEach((id) => {
+      formData.append("amenities", id);
+    });
+
+    /* Images */
+
+    images.forEach((image) => {
+      if (image instanceof File) {
+        formData.append("images", image);
       }
     });
 
@@ -126,8 +343,12 @@ export default function SpaceForm({
       setProgress(100);
 
       if (isEdit) {
-        setSuccessMessage("Your space has been updated successfully.");
+        setSuccessMessage(
+          "Your space has been updated successfully."
+        );
+
         notifySaved();
+
         setIsSubmitting(false);
         return;
       }
@@ -140,7 +361,6 @@ export default function SpaceForm({
         notifySaved();
         navigate("/profile");
       }, 1200);
-
     } catch (error) {
       if (progressTimerRef.current) {
         clearInterval(progressTimerRef.current);
@@ -176,13 +396,31 @@ export default function SpaceForm({
     }
   };
 
+  /* =========================
+     CALLBACK
+  ========================= */
+
+  const notifySaved = () => {
+    if (typeof onSaved === "function") {
+      onSaved();
+    }
+
+    if (typeof onCreated === "function") {
+      onCreated();
+    }
+  };
+
+  /* =========================
+     RENDER
+  ========================= */
+
   return (
     <div className="overflow-hidden rounded-[2rem] border border-black/5 bg-white shadow-[0_20px_60px_rgba(13,59,46,0.08)]">
 
-      {/* FORM HEADER */}
+      {/* HEADER */}
+
       <div className="relative overflow-hidden bg-[#0d3b2e] px-6 py-8 md:px-10">
 
-        {/* Decorative circles */}
         <div className="absolute -right-16 -top-20 h-48 w-48 rounded-full border border-[#e5ad35]/20" />
 
         <div className="absolute -right-8 -top-12 h-32 w-32 rounded-full border border-[#e5ad35]/10" />
@@ -206,10 +444,10 @@ export default function SpaceForm({
           </p>
 
         </div>
-
       </div>
 
       {/* STATUS */}
+
       {(successMessage || errorMessage || isSubmitting) && (
         <div className="px-6 pt-6 md:px-10">
 
@@ -220,7 +458,9 @@ export default function SpaceForm({
 
                 <div>
                   <p className="text-sm font-bold text-[#18231e]">
-                    {isEdit ? "Updating your space..." : "Publishing your space..."}
+                    {isEdit
+                      ? "Updating your space..."
+                      : "Publishing your space..."}
                   </p>
 
                   <p className="mt-1 text-xs text-gray-500">
@@ -248,21 +488,25 @@ export default function SpaceForm({
 
           {successMessage && !isSubmitting && (
             <div className="flex items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
+
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-600 text-white">
                 ✓
               </span>
 
               {successMessage}
+
             </div>
           )}
 
           {errorMessage && (
             <div className="flex items-start gap-3 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+
               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-red-100">
                 !
               </span>
 
               <span>{errorMessage}</span>
+
             </div>
           )}
 
@@ -270,12 +514,14 @@ export default function SpaceForm({
       )}
 
       {/* FORM */}
+
       <form
         onSubmit={handleSubmit}
         className="space-y-10 p-6 md:p-10"
       >
 
         {/* PHOTOS */}
+
         <section>
 
           <SectionHeading
@@ -293,13 +539,14 @@ export default function SpaceForm({
 
         </section>
 
-        {/* DETAILS */}
+        {/* BASIC DETAILS */}
+
         <section>
 
           <SectionHeading
             number="02"
             title="Space details"
-            description="Give your listing a clear title and a description people can trust."
+            description="Tell people what you're offering."
           />
 
           <div className="mt-6 space-y-5">
@@ -308,6 +555,7 @@ export default function SpaceForm({
               label="Space title"
               hint="Example: Modern 3-bedroom house in Borrowdale"
             >
+
               <input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -316,12 +564,14 @@ export default function SpaceForm({
                 disabled={isSubmitting}
                 required
               />
+
             </Field>
 
             <Field
               label="Description"
               hint="Tell people what makes this space special."
             >
+
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -331,27 +581,178 @@ export default function SpaceForm({
                 disabled={isSubmitting}
                 required
               />
+
             </Field>
 
           </div>
 
         </section>
 
-        {/* PRICE + LOCATION */}
+        {/* CATEGORY + SPACE TYPE */}
+
         <section>
 
           <SectionHeading
             number="03"
-            title="Pricing & location"
-            description="Help people understand where your space is and what it costs."
+            title="What kind of space is it?"
+            description="Choose a category first, then select the specific type of space."
+          />
+
+          <div className="mt-6 grid gap-5 md:grid-cols-2">
+
+            {/* CATEGORY */}
+
+            <Field
+              label="Category"
+              hint="Choose the main category."
+            >
+
+              <select
+                value={categoryId}
+                onChange={handleCategoryChange}
+                className="premium-input appearance-none"
+                disabled={isSubmitting || loadingOptions}
+                required
+              >
+
+                <option value="">
+                  {loadingOptions
+                    ? "Loading categories..."
+                    : "Choose a category"}
+                </option>
+
+                {categories.map((category) => (
+                  <option
+                    key={category.id}
+                    value={category.id}
+                  >
+                    {category.name}
+                  </option>
+                ))}
+
+              </select>
+
+            </Field>
+
+            {/* SPACE TYPE */}
+
+            <Field
+              label="Space type"
+              hint={
+                categoryId
+                  ? "Choose the type of space."
+                  : "Choose a category first."
+              }
+            >
+
+              <select
+                value={spaceTypeId}
+                onChange={(e) =>
+                  setSpaceTypeId(e.target.value)
+                }
+                className="premium-input appearance-none"
+                disabled={
+                  isSubmitting ||
+                  loadingOptions ||
+                  !categoryId
+                }
+                required
+              >
+
+                <option value="">
+                  {!categoryId
+                    ? "Choose a category first"
+                    : filteredSpaceTypes.length === 0
+                    ? "No types available"
+                    : "Choose a space type"}
+                </option>
+
+                {filteredSpaceTypes.map((type) => (
+                  <option
+                    key={type.id}
+                    value={type.id}
+                  >
+                    {type.name}
+                  </option>
+                ))}
+
+              </select>
+
+            </Field>
+
+          </div>
+
+        </section>
+
+        {/* LOCATION */}
+
+        <section>
+
+          <SectionHeading
+            number="04"
+            title="Location"
+            description="Tell people where your space is located."
+          />
+
+          <div className="mt-6">
+
+            <Field
+              label="Location"
+              hint="Choose the location closest to your space."
+            >
+
+              <select
+                value={locationId}
+                onChange={(e) =>
+                  setLocationId(e.target.value)
+                }
+                className="premium-input appearance-none"
+                disabled={isSubmitting || loadingOptions}
+                required
+              >
+
+                <option value="">
+                  {loadingOptions
+                    ? "Loading locations..."
+                    : "Choose a location"}
+                </option>
+
+                {locations.map((location) => (
+                  <option
+                    key={location.id}
+                    value={location.id}
+                  >
+                    {location.province
+                      ? `${location.province} — ${location.city} — ${location.area}`
+                      : `${location.city} — ${location.area}`}
+                  </option>
+                ))}
+
+              </select>
+
+            </Field>
+
+          </div>
+
+        </section>
+
+        {/* PRICE */}
+
+        <section>
+
+          <SectionHeading
+            number="05"
+            title="Pricing"
+            description="Set your rental price and payment period."
           />
 
           <div className="mt-6 grid gap-5 md:grid-cols-2">
 
             <Field
-              label="Monthly price"
+              label="Price"
               hint="Enter the rental price in USD."
             >
+
               <div className="relative">
 
                 <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-[#80631d]">
@@ -363,7 +764,9 @@ export default function SpaceForm({
                   min="0"
                   step="0.01"
                   value={price}
-                  onChange={(e) => setPrice(e.target.value)}
+                  onChange={(e) =>
+                    setPrice(e.target.value)
+                  }
                   placeholder="500"
                   className="premium-input pl-10"
                   disabled={isSubmitting}
@@ -371,56 +774,281 @@ export default function SpaceForm({
                 />
 
               </div>
+
             </Field>
 
-            <Field label="Space type">
+            <Field
+              label="Rental period"
+              hint="How is the price charged?"
+            >
 
               <select
-                value={spaceTypeId}
-                onChange={(e) => setSpaceTypeId(e.target.value)}
+                value={rentalPeriod}
+                onChange={(e) =>
+                  setRentalPeriod(e.target.value)
+                }
                 className="premium-input appearance-none"
                 disabled={isSubmitting}
                 required
               >
-                <option value="">Choose a space type</option>
 
-                {spaceTypes.map((type) => (
-                  <option key={type.id} value={type.id}>
-                    {type.name}
-                  </option>
-                ))}
+                <option value="hour">Per Hour</option>
+                <option value="day">Per Day</option>
+                <option value="week">Per Week</option>
+                <option value="month">Per Month</option>
+                <option value="year">Per Year</option>
 
               </select>
 
             </Field>
 
             <Field
-              label="Location"
-              hint="Choose the location closest to your space."
+              label="Security deposit"
+              hint="Optional."
             >
-              <select
-                value={locationId}
-                onChange={(e) => setLocationId(e.target.value)}
-                className="premium-input appearance-none"
+
+              <div className="relative">
+
+                <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-[#80631d]">
+                  $
+                </span>
+
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={deposit}
+                  onChange={(e) =>
+                    setDeposit(e.target.value)
+                  }
+                  placeholder="Optional"
+                  className="premium-input pl-10"
+                  disabled={isSubmitting}
+                />
+
+              </div>
+
+            </Field>
+
+            <Field
+              label="Available from"
+              hint="Optional."
+            >
+
+              <input
+                type="date"
+                value={availableFrom}
+                onChange={(e) =>
+                  setAvailableFrom(e.target.value)
+                }
+                className="premium-input"
                 disabled={isSubmitting}
-                required
-              >
-                <option value="">Choose a location</option>
+              />
 
-                {locations.map((location) => (
-                  <option key={location.id} value={location.id}>
-                    {location.city} — {location.area}
-                  </option>
-                ))}
-
-              </select>
             </Field>
 
           </div>
 
         </section>
 
+        {/* PROPERTY FEATURES */}
+
+        <section>
+
+          <SectionHeading
+            number="06"
+            title="Space features"
+            description="Add useful details so renters know what to expect."
+          />
+
+          <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+
+            <NumberField
+              label="Bedrooms"
+              value={bedrooms}
+              setValue={setBedrooms}
+              disabled={isSubmitting}
+            />
+
+            <NumberField
+              label="Bathrooms"
+              value={bathrooms}
+              setValue={setBathrooms}
+              disabled={isSubmitting}
+            />
+
+            <NumberField
+              label="Parking spaces"
+              value={parkingSpaces}
+              setValue={setParkingSpaces}
+              disabled={isSubmitting}
+            />
+
+            <NumberField
+              label="Floor area (m²)"
+              value={floorArea}
+              setValue={setFloorArea}
+              disabled={isSubmitting}
+              step="0.01"
+            />
+
+            <NumberField
+              label="Capacity"
+              value={capacity}
+              setValue={setCapacity}
+              disabled={isSubmitting}
+            />
+
+            <Field label="Furnished">
+
+              <select
+                value={furnished}
+                onChange={(e) =>
+                  setFurnished(e.target.value)
+                }
+                className="premium-input appearance-none"
+                disabled={isSubmitting}
+              >
+
+                <option value="">
+                  Not specified
+                </option>
+
+                <option value="true">
+                  Furnished
+                </option>
+
+                <option value="false">
+                  Unfurnished
+                </option>
+
+              </select>
+
+            </Field>
+
+          </div>
+
+        </section>
+
+        {/* AMENITIES */}
+
+        {amenities.length > 0 && (
+          <section>
+
+            <SectionHeading
+              number="07"
+              title="Amenities"
+              description="Select the features available at your space."
+            />
+
+            <div className="mt-6 grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+
+              {amenities.map((amenity) => {
+
+                const selected =
+                  amenityIds.includes(amenity.id);
+
+                return (
+                  <button
+                    key={amenity.id}
+                    type="button"
+                    onClick={() =>
+                      toggleAmenity(amenity.id)
+                    }
+                    disabled={isSubmitting}
+                    className={`rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition ${
+                      selected
+                        ? "border-[#0d3b2e] bg-[#0d3b2e] text-white"
+                        : "border-gray-200 bg-[#fafaf8] text-gray-700 hover:border-[#0d3b2e]/30 hover:bg-white"
+                    }`}
+                  >
+
+                    <span className="flex items-center justify-between gap-3">
+
+                      {amenity.name}
+
+                      {selected && (
+                        <span>✓</span>
+                      )}
+
+                    </span>
+
+                  </button>
+                );
+              })}
+
+            </div>
+
+          </section>
+        )}
+
+        {/* AVAILABILITY */}
+
+        <section>
+
+          <SectionHeading
+            number={amenities.length > 0 ? "08" : "07"}
+            title="Availability"
+            description="Let renters know whether this space is currently available."
+          />
+
+          <div className="mt-6">
+
+            <button
+              type="button"
+              onClick={() =>
+                setIsAvailable((current) => !current)
+              }
+              disabled={isSubmitting}
+              className={`flex w-full items-center justify-between rounded-2xl border p-4 text-left transition ${
+                isAvailable
+                  ? "border-emerald-200 bg-emerald-50"
+                  : "border-gray-200 bg-gray-50"
+              }`}
+            >
+
+              <div>
+
+                <p className="font-bold text-[#18231e]">
+                  {isAvailable
+                    ? "Space is available"
+                    : "Space is currently unavailable"}
+                </p>
+
+                <p className="mt-1 text-xs text-gray-500">
+                  {isAvailable
+                    ? "Renters can see this listing as available."
+                    : "Renters will see this space as unavailable."}
+                </p>
+
+              </div>
+
+              <span
+                className={`flex h-8 w-14 items-center rounded-full p-1 transition ${
+                  isAvailable
+                    ? "bg-[#0d3b2e]"
+                    : "bg-gray-300"
+                }`}
+              >
+
+                <span
+                  className={`h-6 w-6 rounded-full bg-white shadow transition-transform ${
+                    isAvailable
+                      ? "translate-x-6"
+                      : "translate-x-0"
+                  }`}
+                />
+
+              </span>
+
+            </button>
+
+          </div>
+
+        </section>
+
         {/* ACTIONS */}
+
         <div className="flex flex-col-reverse gap-3 border-t border-gray-100 pt-7 sm:flex-row sm:justify-end">
 
           <button
@@ -434,9 +1062,15 @@ export default function SpaceForm({
 
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={
+              isSubmitting ||
+              loadingOptions ||
+              !categories.length ||
+              !locations.length
+            }
             className="group inline-flex items-center justify-center gap-3 rounded-full bg-[#0d3b2e] px-8 py-3.5 font-bold text-white shadow-lg transition duration-300 hover:-translate-y-0.5 hover:bg-[#124c3a] hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60"
           >
+
             {isSubmitting
               ? isEdit
                 ? "Updating..."
@@ -458,7 +1092,9 @@ export default function SpaceForm({
       </form>
 
       {/* LOCAL STYLES */}
+
       <style>{`
+
         .premium-input {
           width: 100%;
           border-radius: 1rem;
@@ -467,6 +1103,7 @@ export default function SpaceForm({
           padding: 0.9rem 1rem;
           color: #18231e;
           outline: none;
+
           transition:
             border-color 200ms ease,
             box-shadow 200ms ease,
@@ -485,20 +1122,30 @@ export default function SpaceForm({
         .premium-input:focus {
           border-color: #0d3b2e;
           background: #ffffff;
-          box-shadow: 0 0 0 4px rgba(13, 59, 46, 0.08);
+          box-shadow:
+            0 0 0 4px rgba(13, 59, 46, 0.08);
         }
 
         .premium-input:disabled {
           cursor: not-allowed;
           opacity: 0.6;
         }
+
       `}</style>
+
     </div>
   );
 }
 
-/* SECTION HEADING */
-function SectionHeading({ number, title, description }) {
+/* =========================
+   SECTION HEADING
+========================= */
+
+function SectionHeading({
+  number,
+  title,
+  description,
+}) {
   return (
     <div className="flex gap-4">
 
@@ -507,6 +1154,7 @@ function SectionHeading({ number, title, description }) {
       </div>
 
       <div>
+
         <h3 className="text-xl font-bold text-[#18231e]">
           {title}
         </h3>
@@ -514,24 +1162,28 @@ function SectionHeading({ number, title, description }) {
         <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-500">
           {description}
         </p>
+
       </div>
 
     </div>
   );
 }
 
-/* FIELD */
-function Field({ label, hint, children }) {
+/* =========================
+   FIELD
+========================= */
+
+function Field({
+  label,
+  hint,
+  children,
+}) {
   return (
     <div>
 
-      <div className="mb-2 flex items-baseline justify-between gap-3">
-
-        <label className="text-sm font-bold text-[#26342d]">
-          {label}
-        </label>
-
-      </div>
+      <label className="mb-2 block text-sm font-bold text-[#26342d]">
+        {label}
+      </label>
 
       {children}
 
@@ -542,5 +1194,36 @@ function Field({ label, hint, children }) {
       )}
 
     </div>
+  );
+}
+
+/* =========================
+   NUMBER FIELD
+========================= */
+
+function NumberField({
+  label,
+  value,
+  setValue,
+  disabled,
+  step = "1",
+}) {
+  return (
+    <Field label={label}>
+
+      <input
+        type="number"
+        min="0"
+        step={step}
+        value={value}
+        onChange={(e) =>
+          setValue(e.target.value)
+        }
+        placeholder="Optional"
+        className="premium-input"
+        disabled={disabled}
+      />
+
+    </Field>
   );
 }
