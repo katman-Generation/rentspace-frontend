@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import api from "../api/api";
@@ -7,22 +8,26 @@ import { useAuth } from "../context/useAuth";
 
 export default function Messages() {
   const { user } = useAuth();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [conversations, setConversations] = useState([]);
-  const [selectedId, setSelectedId] = useState(
-    searchParams.get("conversation") || null
-  );
-
+  const [selectedId, setSelectedId] = useState(null);
   const [conversation, setConversation] = useState(null);
-  const [message, setMessage] = useState("");
 
-  const [loading, setLoading] = useState(true);
+  const [loadingConversations, setLoadingConversations] = useState(true);
   const [loadingConversation, setLoadingConversation] = useState(false);
+
+  const [messageText, setMessageText] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
 
-  const getConversations = async () => {
+  const messagesEndRef = useRef(null);
+  const inputRef = useRef(null);
+
+  // --------------------------------------------------
+  // Load conversation list
+  // --------------------------------------------------
+  const loadConversations = useCallback(async () => {
     try {
       const res = await api.get("/api/chat/conversations/");
 
@@ -35,263 +40,352 @@ export default function Messages() {
       return data;
     } catch (err) {
       console.error("Failed to load conversations:", err);
-      setError("We couldn't load your messages.");
+      setError("Unable to load your conversations.");
       return [];
     } finally {
-      setLoading(false);
+      setLoadingConversations(false);
     }
-  };
+  }, []);
 
-  const loadConversation = useCallback(async (conversationId) => {
-    if (!conversationId) return;
+  // --------------------------------------------------
+  // Load one conversation
+  // --------------------------------------------------
+  const loadConversation = useCallback(async (id, silent = false) => {
+    // IMPORTANT:
+    // Never make an API request with undefined/null/empty ID.
+    if (!id) {
+      return;
+    }
 
     try {
-      setLoadingConversation(true);
+      if (!silent) {
+        setLoadingConversation(true);
+      }
 
-      const res = await api.get(
-        `/api/chat/conversations/${conversationId}/`
-      );
+      const res = await api.get(`/api/chat/conversations/${id}/`);
 
       setConversation(res.data);
 
-      // Mark unread messages as read.
+      // Mark unread messages as read
       const messages = res.data?.messages || [];
 
       const unreadMessages = messages.filter(
-        (item) =>
-          !item.is_read &&
-          item.sender_email &&
-          item.sender_email !== user?.email
+        (message) =>
+          !message.is_read &&
+          message.sender_email !== user?.email
       );
 
       await Promise.all(
-        unreadMessages.map((item) =>
-          api.patch(`/api/chat/messages/${item.id}/read/`, {
+        unreadMessages.map((message) =>
+          api.patch(`/api/chat/messages/${message.id}/read/`, {
             is_read: true,
           })
         )
       );
 
-      // Refresh conversation list so previews/unread state stay current.
-      await getConversations();
+      if (unreadMessages.length > 0) {
+        setConversations((current) =>
+          current.map((item) =>
+            item.id === Number(id)
+              ? {
+                  ...item,
+                  last_message: item.last_message
+                    ? {
+                        ...item.last_message,
+                        is_read: true,
+                      }
+                    : item.last_message,
+                }
+              : item
+          )
+        );
+      }
     } catch (err) {
       console.error("Failed to load conversation:", err);
-      setError("We couldn't load this conversation.");
+
+      if (!silent) {
+        setError("Unable to load this conversation.");
+      }
     } finally {
-      setLoadingConversation(false);
+      if (!silent) {
+        setLoadingConversation(false);
+      }
     }
   }, [user?.email]);
 
+  // --------------------------------------------------
+  // Initial load
+  // --------------------------------------------------
   useEffect(() => {
-    getConversations();
-  }, []);
+    loadConversations();
+  }, [loadConversations]);
 
+  // --------------------------------------------------
+  // Select conversation from URL
+  // --------------------------------------------------
   useEffect(() => {
-    if (selectedId) {
-      loadConversation(selectedId);
+    const conversationParam = searchParams.get("conversation");
+
+    if (!conversationParam) {
+      setSelectedId(null);
+      setConversation(null);
+      return;
     }
+
+    const parsedId = Number(conversationParam);
+
+    // Reject invalid values such as:
+    // undefined
+    // null
+    // ""
+    // abc
+    if (!Number.isInteger(parsedId) || parsedId <= 0) {
+      console.warn(
+        "Ignoring invalid conversation ID:",
+        conversationParam
+      );
+
+      setSelectedId(null);
+      setConversation(null);
+      return;
+    }
+
+    setSelectedId(parsedId);
+  }, [searchParams]);
+
+  // --------------------------------------------------
+  // Load selected conversation
+  // --------------------------------------------------
+  useEffect(() => {
+    if (!selectedId) {
+      return;
+    }
+
+    loadConversation(selectedId);
   }, [selectedId, loadConversation]);
 
-  // Lightweight polling for new messages.
+  // --------------------------------------------------
+  // Poll selected conversation
+  // --------------------------------------------------
   useEffect(() => {
-    if (!selectedId) return;
+    if (!selectedId) {
+      return;
+    }
 
     const interval = setInterval(() => {
-      loadConversation(selectedId);
+      loadConversation(selectedId, true);
     }, 5000);
 
     return () => clearInterval(interval);
   }, [selectedId, loadConversation]);
 
+  // --------------------------------------------------
+  // Auto-scroll messages
+  // --------------------------------------------------
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({
+      behavior: "smooth",
+    });
+  }, [conversation?.messages]);
+
+  // --------------------------------------------------
+  // Select conversation
+  // --------------------------------------------------
+  const selectConversation = (id) => {
+    if (!id) return;
+
+    setError("");
+    setSearchParams({ conversation: String(id) });
+  };
+
+  // --------------------------------------------------
+  // Send message
+  // --------------------------------------------------
   const sendMessage = async (e) => {
     e.preventDefault();
 
-    const content = message.trim();
+    const content = messageText.trim();
 
-    if (!content || !selectedId || sending) return;
+    if (!content || !selectedId || sending) {
+      return;
+    }
 
     try {
       setSending(true);
       setError("");
 
-      await api.post(
+      const res = await api.post(
         `/api/chat/conversations/${selectedId}/messages/`,
         {
           content,
         }
       );
 
-      setMessage("");
+      // Add the new message immediately.
+      setConversation((current) => {
+        if (!current) return current;
 
-      await loadConversation(selectedId);
+        return {
+          ...current,
+          messages: [
+            ...(current.messages || []),
+            res.data,
+          ],
+        };
+      });
+
+      // Clear ONLY after successful send.
+      setMessageText("");
+
+      // Keep focus in the input.
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+      });
+
+      // Refresh conversation list so preview/order updates.
+      await loadConversations();
     } catch (err) {
       console.error("Failed to send message:", err);
-
-      const backendError = err?.response?.data;
-
       setError(
-        backendError?.content?.[0] ||
-          "We couldn't send your message. Please try again."
+        err?.response?.data?.content?.[0] ||
+          "Unable to send your message."
       );
     } finally {
       setSending(false);
     }
   };
 
-  const selectedConversation = useMemo(
-    () =>
-      conversations.find(
-        (item) => String(item.id) === String(selectedId)
-      ),
-    [conversations, selectedId]
-  );
+  // --------------------------------------------------
+  // Current conversation information
+  // --------------------------------------------------
+  const conversationTitle = useMemo(() => {
+    if (!conversation) return "";
 
-  if (!user) {
-    return (
-      <>
-        <Navbar />
+    if (conversation.space_title) {
+      return conversation.space_title;
+    }
 
-        <main className="min-h-[70vh] bg-[#f8f4e9] flex items-center justify-center px-4">
-          <div className="text-center">
-            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#e5ad35]/20 text-3xl">
-              💬
-            </div>
+    if (conversation.space?.title) {
+      return conversation.space.title;
+    }
 
-            <h1 className="mt-6 text-3xl font-bold text-[#1d2923]">
-              Sign in to view your messages
-            </h1>
+    return "Conversation";
+  }, [conversation]);
 
-            <p className="mt-3 text-gray-500">
-              Log in to communicate with space owners and renters.
-            </p>
+  const otherPerson = useMemo(() => {
+    if (!conversation || !user) return "User";
 
-            <Link
-              to="/login"
-              className="mt-7 inline-flex rounded-full bg-[#155c3a] px-6 py-3 font-semibold text-white hover:bg-[#0d3f29]"
-            >
-              Log in
-            </Link>
-          </div>
-        </main>
+    const isRenter =
+      conversation.renter_email === user.email;
 
-        <Footer />
-      </>
-    );
-  }
+    return isRenter
+      ? conversation.owner_name || conversation.owner_email || "Owner"
+      : conversation.renter_name || conversation.renter_email || "Renter";
+  }, [conversation, user]);
 
   return (
     <div className="min-h-screen bg-[#f8f4e9]">
       <Navbar />
 
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-7">
-          <p className="text-xs font-bold uppercase tracking-[0.25em] text-[#a85f3f]">
+        <div className="mb-8">
+          <p className="mb-2 text-sm font-semibold uppercase tracking-[0.18em] text-[#155c3a]">
             RentSpace
           </p>
 
-          <h1 className="mt-2 text-3xl font-bold text-[#1d2923] sm:text-4xl">
+          <h1 className="text-3xl font-bold text-[#0d3b2e]">
             Messages
           </h1>
 
           <p className="mt-2 text-gray-500">
-            Communicate directly with people about their spaces.
+            Talk directly with renters and space owners.
           </p>
         </div>
 
         {error && (
-          <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+          <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
           </div>
         )}
 
-        <div className="grid min-h-[600px] overflow-hidden rounded-[2rem] border border-gray-100 bg-white shadow-xl lg:grid-cols-[340px_1fr]">
-
-          {/* CONVERSATION LIST */}
-          <aside className="border-b border-gray-100 lg:border-b-0 lg:border-r">
+        <div className="grid min-h-[600px] overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm md:grid-cols-[320px_1fr]">
+          {/* Conversation list */}
+          <aside className="border-b border-gray-100 md:border-b-0 md:border-r">
             <div className="border-b border-gray-100 px-5 py-4">
-              <p className="text-sm font-semibold text-gray-500">
+              <h2 className="font-semibold text-[#0d3b2e]">
                 Conversations
-              </p>
+              </h2>
             </div>
 
-            {loading ? (
-              <div className="space-y-3 p-5">
-                {[1, 2, 3].map((item) => (
-                  <div
-                    key={item}
-                    className="animate-pulse rounded-2xl bg-gray-100 p-5"
-                  >
-                    <div className="h-4 w-2/3 rounded bg-gray-200" />
-                    <div className="mt-3 h-3 w-1/2 rounded bg-gray-200" />
-                  </div>
-                ))}
+            {loadingConversations ? (
+              <div className="p-5 text-sm text-gray-400">
+                Loading conversations...
               </div>
             ) : conversations.length === 0 ? (
-              <div className="px-5 py-12 text-center">
-                <div className="text-3xl">💬</div>
+              <div className="p-6 text-center">
+                <div className="mb-3 text-3xl">💬</div>
 
-                <h2 className="mt-4 font-bold text-[#1d2923]">
+                <p className="font-semibold text-gray-700">
                   No conversations yet
-                </h2>
-
-                <p className="mt-2 text-sm leading-6 text-gray-500">
-                  When you message a space owner, your conversation will
-                  appear here.
                 </p>
 
-                <Link
-                  to="/"
-                  className="mt-5 inline-flex rounded-full bg-[#155c3a] px-5 py-2.5 text-sm font-semibold text-white"
-                >
-                  Explore spaces
-                </Link>
+                <p className="mt-1 text-sm text-gray-400">
+                  Message a space owner to start a conversation.
+                </p>
               </div>
             ) : (
               <div className="max-h-[600px] overflow-y-auto">
                 {conversations.map((item) => {
-                  const isActive =
-                    String(item.id) === String(selectedId);
+                  const active = item.id === selectedId;
 
-                  const messages = item.messages || [];
-                  const lastMessage =
-                    messages.length > 0
-                      ? messages[messages.length - 1]
-                      : null;
+                  const title =
+                    item.space_title ||
+                    item.space?.title ||
+                    "Space";
+
+                  const person =
+                    item.renter_email === user?.email
+                      ? item.owner_name ||
+                        item.owner_email ||
+                        "Owner"
+                      : item.renter_name ||
+                        item.renter_email ||
+                        "Renter";
 
                   return (
                     <button
                       key={item.id}
                       type="button"
-                      onClick={() => setSelectedId(item.id)}
+                      onClick={() => selectConversation(item.id)}
                       className={`w-full border-b border-gray-100 px-5 py-4 text-left transition ${
-                        isActive
+                        active
                           ? "bg-[#eef4f1]"
                           : "hover:bg-gray-50"
                       }`}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="truncate font-semibold text-[#1d2923]">
-                            {item.space_title || "RentSpace listing"}
+                          <p className="truncate font-semibold text-[#0d3b2e]">
+                            {title}
                           </p>
 
-                          <p className="mt-1 text-xs text-gray-400">
-                            {item.owner_name
-                              ? `Owner: ${item.owner_name}`
-                              : ""}
+                          <p className="mt-1 text-sm text-gray-500">
+                            {person}
                           </p>
+
+                          {item.last_message?.content && (
+                            <p className="mt-1 truncate text-xs text-gray-400">
+                              {item.last_message.content}
+                            </p>
+                          )}
                         </div>
 
-                        {lastMessage && !lastMessage.is_read && (
-                          <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-[#e5ad35]" />
-                        )}
+                        {!item.last_message?.is_read &&
+                          item.last_message?.sender_email !==
+                            user?.email && (
+                            <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-[#e0b84b]" />
+                          )}
                       </div>
-
-                      {lastMessage && (
-                        <p className="mt-2 truncate text-sm text-gray-500">
-                          {lastMessage.content}
-                        </p>
-                      )}
                     </button>
                   );
                 })}
@@ -299,145 +393,143 @@ export default function Messages() {
             )}
           </aside>
 
-          {/* CHAT */}
+          {/* Chat */}
           <section className="flex min-h-[600px] flex-col">
             {!selectedId ? (
-              <div className="flex flex-1 items-center justify-center px-6 text-center">
+              <div className="flex flex-1 items-center justify-center p-8 text-center">
                 <div>
-                  <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#e5ad35]/20 text-3xl">
-                    💬
-                  </div>
+                  <div className="mb-4 text-5xl">💬</div>
 
-                  <h2 className="mt-5 text-2xl font-bold text-[#1d2923]">
+                  <h2 className="text-xl font-bold text-[#0d3b2e]">
                     Select a conversation
                   </h2>
 
-                  <p className="mt-2 max-w-sm text-sm leading-6 text-gray-500">
-                    Choose a conversation from the left to start messaging.
+                  <p className="mt-2 max-w-sm text-sm text-gray-500">
+                    Choose a conversation from the left to start
+                    messaging.
                   </p>
                 </div>
               </div>
             ) : loadingConversation && !conversation ? (
-              <div className="flex flex-1 items-center justify-center">
-                <div className="text-center">
-                  <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-[#155c3a]/20 border-t-[#155c3a]" />
-                  <p className="mt-4 text-sm text-gray-500">
-                    Loading conversation...
-                  </p>
-                </div>
+              <div className="flex flex-1 items-center justify-center text-sm text-gray-400">
+                Loading conversation...
               </div>
-            ) : (
+            ) : conversation ? (
               <>
-                {/* CHAT HEADER */}
-                <div className="border-b border-gray-100 px-5 py-5 sm:px-7">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-[#a85f3f]">
-                    Conversation
-                  </p>
+                {/* Chat header */}
+                <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4 sm:px-6">
+                  <div>
+                    <h2 className="font-bold text-[#0d3b2e]">
+                      {conversationTitle}
+                    </h2>
 
-                  <h2 className="mt-1 text-xl font-bold text-[#1d2923]">
-                    {conversation?.space_title ||
-                      selectedConversation?.space_title ||
-                      "RentSpace listing"}
-                  </h2>
-                </div>
+                    <p className="text-sm text-gray-500">
+                      {otherPerson}
+                    </p>
+                  </div>
 
-                {/* MESSAGES */}
-                <div className="flex-1 space-y-4 overflow-y-auto bg-[#faf9f5] px-5 py-6 sm:px-7">
-                  {(conversation?.messages || []).length === 0 ? (
-                    <div className="flex h-full items-center justify-center text-center">
-                      <div>
-                        <p className="font-semibold text-[#1d2923]">
-                          Start the conversation
-                        </p>
-
-                        <p className="mt-1 text-sm text-gray-500">
-                          Ask a question about this space.
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    conversation.messages.map((item) => {
-                      const mine =
-                        item.sender_email === user.email;
-
-                      return (
-                        <div
-                          key={item.id}
-                          className={`flex ${
-                            mine ? "justify-end" : "justify-start"
-                          }`}
-                        >
-                          <div
-                            className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-                              mine
-                                ? "rounded-br-md bg-[#155c3a] text-white"
-                                : "rounded-bl-md bg-white text-[#1d2923] shadow-sm"
-                            }`}
-                          >
-                            {!mine && (
-                              <p className="mb-1 text-xs font-semibold text-[#a85f3f]">
-                                {item.sender_name || "User"}
-                              </p>
-                            )}
-
-                            <p className="whitespace-pre-wrap text-sm leading-6">
-                              {item.content}
-                            </p>
-
-                            <p
-                              className={`mt-1 text-[10px] ${
-                                mine
-                                  ? "text-white/60"
-                                  : "text-gray-400"
-                              }`}
-                            >
-                              {item.created_at
-                                ? new Date(
-                                    item.created_at
-                                  ).toLocaleString()
-                                : ""}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })
+                  {conversation.space_id && (
+                    <Link
+                      to={`/space/${conversation.space_id}`}
+                      className="rounded-full border border-gray-200 px-4 py-2 text-xs font-semibold text-[#0d3b2e] transition hover:bg-gray-50"
+                    >
+                      View space
+                    </Link>
                   )}
                 </div>
 
-                {/* COMPOSER */}
+                {/* Messages */}
+                <div className="flex-1 space-y-4 overflow-y-auto p-5 sm:p-6">
+                  {(conversation.messages || []).map((message) => {
+                    const mine =
+                      message.sender_email === user?.email;
+
+                    return (
+                      <div
+                        key={message.id}
+                        className={`flex ${
+                          mine
+                            ? "justify-end"
+                            : "justify-start"
+                        }`}
+                      >
+                        <div
+                          className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                            mine
+                              ? "rounded-br-md bg-[#155c3a] text-white"
+                              : "rounded-bl-md bg-[#f3f3ef] text-gray-800"
+                          }`}
+                        >
+                          <p className="whitespace-pre-wrap break-words text-sm">
+                            {message.content}
+                          </p>
+
+                          <p
+                            className={`mt-1 text-[10px] ${
+                              mine
+                                ? "text-white/60"
+                                : "text-gray-400"
+                            }`}
+                          >
+                            {new Date(
+                              message.created_at
+                            ).toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  <div ref={messagesEndRef} />
+                </div>
+
+                {/* Message input */}
                 <form
                   onSubmit={sendMessage}
-                  className="border-t border-gray-100 bg-white p-4 sm:p-5"
+                  className="border-t border-gray-100 p-4 sm:p-5"
                 >
-                  <div className="flex gap-3">
+                  <div className="flex items-end gap-3">
                     <textarea
-                      value={message}
-                      onChange={(e) => setMessage(e.target.value)}
-                      placeholder="Write a message..."
-                      rows={2}
-                      className="min-w-0 flex-1 resize-none rounded-2xl border border-gray-200 bg-[#faf9f5] px-4 py-3 text-sm outline-none transition focus:border-[#155c3a] focus:ring-4 focus:ring-[#155c3a]/10"
+                      ref={inputRef}
+                      value={messageText}
+                      onChange={(e) =>
+                        setMessageText(e.target.value)
+                      }
                       onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
+                        if (
+                          e.key === "Enter" &&
+                          !e.shiftKey
+                        ) {
                           e.preventDefault();
-                          e.currentTarget.form?.requestSubmit();
+                          sendMessage(e);
                         }
                       }}
+                      rows={2}
+                      placeholder="Write a message..."
+                      className="min-h-[52px] flex-1 resize-none rounded-2xl border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-[#155c3a] focus:ring-2 focus:ring-[#155c3a]/10"
                     />
 
                     <button
                       type="submit"
-                      disabled={!message.trim() || sending}
-                      className="self-end rounded-2xl bg-[#155c3a] px-5 py-3.5 font-semibold text-white transition hover:bg-[#0d3f29] disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={
+                        sending ||
+                        !messageText.trim()
+                      }
+                      className="rounded-2xl bg-[#155c3a] px-5 py-3 font-semibold text-white transition hover:bg-[#0d3f29] disabled:opacity-50"
                     >
-                      {sending ? "..." : "Send"}
+                      {sending ? "Sending..." : "Send"}
                     </button>
                   </div>
 
-                  <p className="mt-2 text-[11px] text-gray-400">
-                    Press Enter to send. Shift + Enter for a new line.
+                  <p className="mt-2 text-xs text-gray-400">
+                    Press Enter to send · Shift + Enter for a new line
                   </p>
                 </form>
               </>
+            ) : (
+              <div className="flex flex-1 items-center justify-center text-sm text-gray-400">
+                Conversation not found.
+              </div>
             )}
           </section>
         </div>
