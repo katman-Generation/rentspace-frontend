@@ -52,9 +52,15 @@ export default function Navbar() {
             </NavItem>
 
             {user && (
-              <NavItem to="/profile">
-                My Spaces
-              </NavItem>
+              <>
+                <NavItem to="/profile">
+                  My Spaces
+                </NavItem>
+
+                <NavItem to="/messages">
+                  Messages
+                </NavItem>
+              </>
             )}
 
           </nav>
@@ -171,6 +177,12 @@ export default function Navbar() {
                     onClick={closeMenu}
                   >
                     My Profile
+                  </MobileNavItem>
+                  <MobileNavItem
+                    to="/messages"
+                    onClick={closeMenu}
+                  >
+                    Messages
                   </MobileNavItem>
 
                   <MobileNavItem

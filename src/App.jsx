@@ -7,6 +7,7 @@ import PostSpace from './pages/PostSpace';
 import PrivateRoute from './components/PrivateRoute';
 import Profile from './pages/Profile';
 import About from './pages/About';
+import Messages from './pages/Messages';
 
 export default function App() {
   return (
@@ -23,6 +24,14 @@ export default function App() {
           element={
             <PrivateRoute>
               <PostSpace />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/messages"
+          element={
+            <PrivateRoute>
+              <Messages />
             </PrivateRoute>
           }
         />

@@ -1,12 +1,15 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import api from "../api/api";
 import SpaceForm from "../components/SpaceForm";
 import { useCallback, useEffect, useState } from "react";
+import { useAuth } from "../context/useAuth";
 
 export default function SpaceDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [space, setSpace] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -55,6 +58,30 @@ export default function SpaceDetail() {
       console.error(err);
     } finally {
       setUpdating(false);
+    }
+  };
+  const messageOwner = async () => {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+
+    if (!space?.id || space.is_owner || !space.is_available) {
+      return;
+    }
+
+    try {
+      const res = await api.post("/api/chat/conversations/", {
+        space_id: space.id,
+      });
+
+      navigate(`/messages?conversation=${res.data.id}`);
+    } catch (err) {
+      console.error("Failed to start conversation:", err);
+
+      if (err?.response?.status === 401) {
+        navigate("/login");
+      }
     }
   };
 
@@ -111,12 +138,6 @@ export default function SpaceDetail() {
     );
   }
 
-  const whatsappLink =
-    space.owner_phone
-      ? `https://wa.me/${space.owner_phone}?text=${encodeURIComponent(
-          `Hello, I'm interested in your space "${space.title}" listed on RentSpace`
-        )}`
-      : null;
 
   const images = space.images || [];
   const hasImages = images.length > 0;
@@ -418,16 +439,15 @@ export default function SpaceDetail() {
               </div>
 
               {/* Contact */}
-              {!space.is_owner && space.is_available && whatsappLink && (
-                <a
-                  href={whatsappLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
+              {!space.is_owner && space.is_available && (
+                <button
+                  type="button"
+                  onClick={messageOwner}
                   className="mt-7 flex w-full items-center justify-center gap-3 rounded-2xl bg-[#155c3a] px-5 py-4 font-semibold text-white shadow-lg transition duration-300 hover:-translate-y-0.5 hover:bg-[#0d3f29] hover:shadow-xl"
                 >
                   <span className="text-xl">💬</span>
-                  Chat with owner
-                </a>
+                  Message owner
+                </button>
               )}
 
               {!space.is_owner && !space.is_available && (
