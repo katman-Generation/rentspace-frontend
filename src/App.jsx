@@ -8,6 +8,8 @@ import PrivateRoute from './components/PrivateRoute';
 import Profile from './pages/Profile';
 import About from './pages/About';
 import Messages from './pages/Messages';
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
 
 export default function App() {
   return (
@@ -16,6 +18,8 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/privacy" element={<Privacy />} />
         <Route path="/space/:id" element={<SpaceDetail />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/about" element={<About />} />

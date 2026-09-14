@@ -16,8 +16,16 @@ export default function Register() {
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const handleSubmit = async (e) => {
+    if (!agreedToTerms) {
+      setError(
+        "Please agree to the Terms & Conditions and acknowledge the Privacy Policy."
+      );
+      setLoading(false);
+      return;
+    }
     e.preventDefault();
 
     setError("");
@@ -85,7 +93,7 @@ export default function Register() {
               type="text"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
-              placeholder="Tatenda"
+              placeholder="First name"
               required
               autoComplete="given-name"
               className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3.5 text-sm outline-none transition placeholder:text-gray-400 focus:border-[#155c3a] focus:ring-4 focus:ring-[#155c3a]/10"
@@ -105,7 +113,7 @@ export default function Register() {
               type="text"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
-              placeholder="Katema"
+              placeholder="Surname"
               required
               autoComplete="family-name"
               className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3.5 text-sm outline-none transition placeholder:text-gray-400 focus:border-[#155c3a] focus:ring-4 focus:ring-[#155c3a]/10"
@@ -184,7 +192,7 @@ export default function Register() {
         {/* Submit */}
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || !agreedToTerms}
           className="group mt-2 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#155c3a] px-5 py-4 font-semibold text-white shadow-lg transition duration-300 hover:-translate-y-0.5 hover:bg-[#0d3f29] hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60"
         >
           {loading ? "Creating account..." : "Create account"}
@@ -196,9 +204,49 @@ export default function Register() {
           )}
         </button>
 
-        <p className="pt-1 text-center text-xs leading-5 text-gray-400">
-          By creating an account, you're joining the RentSpace community.
-        </p>
+        <div className="space-y-3 pt-1">
+          <label className="flex items-start gap-3 text-xs leading-5 text-gray-500">
+            <input
+              type="checkbox"
+              checked={agreedToTerms}
+              onChange={(e) => setAgreedToTerms(e.target.checked)}
+              className="mt-1 h-4 w-4 shrink-0 accent-[#155c3a]"
+            />
+
+            <span>
+              I agree to the{" "}
+              <a
+                href="/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-[#155c3a] hover:underline"
+              >
+                Terms & Conditions
+              </a>{" "}
+              and acknowledge that I have read the{" "}
+              <a
+                href="/privacy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-[#155c3a] hover:underline"
+              >
+                Privacy Policy
+              </a>
+              .
+            </span>
+          </label>
+
+          <label className="flex items-start gap-3 text-xs leading-5 text-gray-400">
+            <input
+              type="checkbox"
+              className="mt-1 h-4 w-4 shrink-0 accent-[#155c3a]"
+            />
+
+            <span>
+              I'd like to receive updates and offers from RentSpace.
+            </span>
+          </label>
+        </div>
 
       </form>
     </AuthLayout>
