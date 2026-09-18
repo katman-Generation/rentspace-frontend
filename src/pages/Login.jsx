@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 import AuthLayout from "../components/AuthLayout";
 import { useAuth } from "../context/useAuth";
+import { GoogleLogin } from "@react-oauth/google";
 
 export default function Login() {
-  const { login } = useAuth();
+  const { login, googleLogin } = useAuth();
   const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
@@ -46,6 +47,41 @@ export default function Login() {
             {error}
           </div>
         )}
+        <div className="mb-5">
+          <GoogleLogin
+            onSuccess={async (credentialResponse) => {
+              try {
+                setError("");
+                setLoading(true);
+
+                await googleLogin(credentialResponse.credential);
+
+                navigate("/");
+              } catch (err) {
+                console.error(err);
+
+                setError(
+                  err?.response?.data?.detail ||
+                    "Google sign-in failed. Please try again."
+                );
+              } finally {
+                setLoading(false);
+              }
+            }}
+            onError={() => {
+              setError("Google sign-in failed. Please try again.");
+            }}
+            useOneTap={false}
+          />
+        </div>
+
+        <div className="my-5 flex items-center gap-3">
+          <div className="h-px flex-1 bg-gray-200" />
+          <span className="text-xs font-medium text-gray-400">
+            OR
+          </span>
+          <div className="h-px flex-1 bg-gray-200" />
+        </div>
 
         {/* Email */}
         <div>
@@ -70,12 +106,21 @@ export default function Login() {
 
         {/* Password */}
         <div>
-          <label
-            htmlFor="password"
-            className="mb-2 block text-sm font-semibold text-[#1d2923]"
-          >
-            Password
-          </label>
+          <div className="mb-2 flex items-center justify-between">
+            <label
+              htmlFor="password"
+              className="block text-sm font-semibold text-[#1d2923]"
+            >
+              Password
+            </label>
+
+            <Link
+              to="/forgot-password"
+              className="text-sm font-semibold text-[#155c3a] transition hover:text-[#0d3f29] hover:underline"
+            >
+              Forgot password?
+            </Link>
+          </div>
 
           <input
             id="password"

@@ -218,7 +218,7 @@ export default function Navbar() {
                   <Link
                     to="/register"
                     onClick={closeMenu}
-                    className="text-center bg-[#0d3b2e] text-white py-3 rounded-full font-semibold"
+                    className="text-center bg-[#0d3b2e] text-[#f5d98b] py-3 rounded-full font-semibold"
                   >
                     Create account
                   </Link>

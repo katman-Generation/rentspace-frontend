@@ -3,9 +3,10 @@ import { useNavigate } from "react-router-dom";
 
 import AuthLayout from "../components/AuthLayout";
 import { useAuth } from "../context/useAuth";
+import { GoogleLogin } from "@react-oauth/google";
 
 export default function Register() {
-  const { register } = useAuth();
+  const { register, googleLogin } = useAuth();
   const navigate = useNavigate();
 
   const [firstName, setFirstName] = useState("");
@@ -19,6 +20,8 @@ export default function Register() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const handleSubmit = async (e) => {
+    e.preventDefault();
+    
     if (!agreedToTerms) {
       setError(
         "Please agree to the Terms & Conditions and acknowledge the Privacy Policy."
@@ -26,7 +29,7 @@ export default function Register() {
       setLoading(false);
       return;
     }
-    e.preventDefault();
+    
 
     setError("");
     setLoading(true);
@@ -76,6 +79,41 @@ export default function Register() {
             {error}
           </div>
         )}
+        <div className="mb-5">
+          <GoogleLogin
+            onSuccess={async (credentialResponse) => {
+              try {
+                setError("");
+                setLoading(true);
+
+                await googleLogin(credentialResponse.credential);
+
+                navigate("/");
+              } catch (err) {
+                console.error(err);
+
+                setError(
+                  err?.response?.data?.detail ||
+                    "Google sign-up failed. Please try again."
+                );
+              } finally {
+                setLoading(false);
+              }
+            }}
+            onError={() => {
+              setError("Google sign-up failed. Please try again.");
+            }}
+            useOneTap={false}
+          />
+        </div>
+
+        <div className="my-5 flex items-center gap-3">
+          <div className="h-px flex-1 bg-gray-200" />
+          <span className="text-xs font-medium text-gray-400">
+            OR
+          </span>
+          <div className="h-px flex-1 bg-gray-200" />
+        </div>
 
         {/* Name */}
         <div className="grid gap-4 sm:grid-cols-2">

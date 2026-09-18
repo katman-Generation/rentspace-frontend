@@ -31,7 +31,7 @@ export default function About() {
 
           <p className="mx-auto mt-7 max-w-2xl text-lg leading-8 text-white/70 sm:text-xl">
             RentSpace is a Zimbabwean platform built to connect people with
-            spaces — from homes and rooms to businesses, offices and places
+            spaces, from homes and rooms to businesses, offices and places
             worth discovering.
           </p>
         </div>

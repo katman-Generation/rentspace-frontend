@@ -76,6 +76,16 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     fetchProfile();
   }, []);
+  const googleLogin = async (credential) => {
+    const res = await api.post("/api/google-login/", {
+      credential,
+    });
+
+    localStorage.setItem("access", res.data.access);
+    localStorage.setItem("refresh", res.data.refresh);
+
+    await fetchProfile();
+  };
 
   return (
     <AuthContext.Provider
@@ -85,9 +95,11 @@ export function AuthProvider({ children }) {
         register,
         logout,
         loading,
+        googleLogin,
       }}
     >
       {!loading && children}
     </AuthContext.Provider>
   );
 }
+

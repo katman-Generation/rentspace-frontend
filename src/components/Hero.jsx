@@ -60,7 +60,7 @@ export default function Hero() {
           {/* DESCRIPTION */}
           <p className="mt-7 max-w-2xl text-lg leading-8 text-white/75 sm:text-xl">
             Discover homes, rooms, shops, offices, warehouses and spaces
-            across Zimbabwe — all in one place.
+            across Zimbabwe all in one place.
           </p>
 
           {/* ACTIONS */}
