@@ -22,7 +22,11 @@ export default function Messages() {
   const [error, setError] = useState("");
 
   const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
   const inputRef = useRef(null);
+
+  const firstConversationLoadRef = useRef(true);
+  const previousMessageCountRef = useRef(0);
 
   // --------------------------------------------------
   // Load conversation list
@@ -50,68 +54,90 @@ export default function Messages() {
   // --------------------------------------------------
   // Load one conversation
   // --------------------------------------------------
-  const loadConversation = useCallback(async (id, silent = false) => {
-    // IMPORTANT:
-    // Never make an API request with undefined/null/empty ID.
-    if (!id) {
-      return;
-    }
-
-    try {
-      if (!silent) {
-        setLoadingConversation(true);
+  const loadConversation = useCallback(
+    async (id, silent = false) => {
+      if (!id) {
+        return;
       }
 
-      const res = await api.get(`/api/chat/conversations/${id}/`);
+      try {
+        if (!silent) {
+          setLoadingConversation(true);
+        }
 
-      setConversation(res.data);
-
-      // Mark unread messages as read
-      const messages = res.data?.messages || [];
-
-      const unreadMessages = messages.filter(
-        (message) =>
-          !message.is_read &&
-          message.sender_email !== user?.email
-      );
-
-      await Promise.all(
-        unreadMessages.map((message) =>
-          api.patch(`/api/chat/messages/${message.id}/read/`, {
-            is_read: true,
-          })
-        )
-      );
-
-      if (unreadMessages.length > 0) {
-        setConversations((current) =>
-          current.map((item) =>
-            item.id === Number(id)
-              ? {
-                  ...item,
-                  last_message: item.last_message
-                    ? {
-                        ...item.last_message,
-                        is_read: true,
-                      }
-                    : item.last_message,
-                }
-              : item
-          )
+        const res = await api.get(
+          `/api/chat/conversations/${id}/`
         );
-      }
-    } catch (err) {
-      console.error("Failed to load conversation:", err);
 
-      if (!silent) {
-        setError("Unable to load this conversation.");
+        const newConversation = res.data;
+        const newMessages = newConversation?.messages || [];
+
+        setConversation((current) => {
+          if (!current) {
+            return newConversation;
+          }
+
+          return {
+            ...current,
+            ...newConversation,
+            messages: newMessages,
+          };
+        });
+
+        // Mark unread messages as read
+        const unreadMessages = newMessages.filter(
+          (message) =>
+            !message.is_read &&
+            message.sender_email !== user?.email
+        );
+
+        if (unreadMessages.length > 0) {
+          await Promise.all(
+            unreadMessages.map((message) =>
+              api.patch(
+                `/api/chat/messages/${message.id}/read/`,
+                {
+                  is_read: true,
+                }
+              )
+            )
+          );
+
+          setConversations((current) =>
+            current.map((item) =>
+              item.id === Number(id)
+                ? {
+                    ...item,
+                    last_message: item.last_message
+                      ? {
+                          ...item.last_message,
+                          is_read: true,
+                        }
+                      : item.last_message,
+                  }
+                : item
+            )
+          );
+        }
+      } catch (err) {
+        console.error(
+          "Failed to load conversation:",
+          err
+        );
+
+        if (!silent) {
+          setError(
+            "Unable to load this conversation."
+          );
+        }
+      } finally {
+        if (!silent) {
+          setLoadingConversation(false);
+        }
       }
-    } finally {
-      if (!silent) {
-        setLoadingConversation(false);
-      }
-    }
-  }, [user?.email]);
+    },
+    [user?.email]
+  );
 
   // --------------------------------------------------
   // Initial load
@@ -150,6 +176,9 @@ export default function Messages() {
       return;
     }
 
+    firstConversationLoadRef.current = true;
+    previousMessageCountRef.current = 0;
+
     setSelectedId(parsedId);
   }, [searchParams]);
 
@@ -183,10 +212,56 @@ export default function Messages() {
   // Auto-scroll messages
   // --------------------------------------------------
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({
-      behavior: "smooth",
-    });
-  }, [conversation?.messages]);
+    const messages = conversation?.messages || [];
+
+    if (!conversation) {
+      return;
+    }
+
+    // First load of a conversation:
+    // go to the bottom once.
+    if (firstConversationLoadRef.current) {
+      firstConversationLoadRef.current = false;
+      previousMessageCountRef.current = messages.length;
+
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({
+          behavior: "auto",
+        });
+      });
+
+      return;
+    }
+
+    const previousCount =
+      previousMessageCountRef.current;
+
+    const currentCount = messages.length;
+
+    // Only scroll when a NEW message was actually added.
+    if (currentCount > previousCount) {
+      const container = messagesContainerRef.current;
+
+      if (container) {
+        const distanceFromBottom =
+          container.scrollHeight -
+          container.scrollTop -
+          container.clientHeight;
+
+        // Only auto-scroll if the user was already
+        // close to the bottom.
+        if (distanceFromBottom < 150) {
+          requestAnimationFrame(() => {
+            messagesEndRef.current?.scrollIntoView({
+              behavior: "smooth",
+            });
+          });
+        }
+      }
+    }
+
+    previousMessageCountRef.current = currentCount;
+  }, [conversation]);
 
   // --------------------------------------------------
   // Select conversation
@@ -439,7 +514,7 @@ export default function Messages() {
                 </div>
 
                 {/* Messages */}
-                <div className="flex-1 space-y-4 overflow-y-auto p-5 sm:p-6">
+                <div ref={messagesContainerRef} className="flex-1 space-y-4 overflow-y-auto p-5 sm:p-6">
                   {(conversation.messages || []).map((message) => {
                     const mine =
                       message.sender_email === user?.email;
