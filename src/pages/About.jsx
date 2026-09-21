@@ -1,4 +1,12 @@
 import { Link } from "react-router-dom";
+
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faHouse,
+  faHandshake,
+  faMagnifyingGlass,
+} from "@fortawesome/free-solid-svg-icons";
+
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import heroImage from "../assets/rentspace-hero.jpeg";
@@ -9,7 +17,7 @@ export default function About() {
       <Navbar />
 
       {/* HERO */}
-      <section className="relative overflow-hidden bg-[#0d3f29] py-24 text-white sm:py-32">
+      <section className="relative overflow-hidden bg-[#0d3f29] py-24 text-white/70 sm:py-32">
         <div className="absolute inset-0">
           <img
             src={heroImage}
@@ -21,9 +29,6 @@ export default function About() {
         </div>
 
         <div className="relative mx-auto max-w-5xl px-4 text-center sm:px-6 lg:px-8">
-          <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#f5d98b]">
-            About RentSpace
-          </p>
 
           <h1 className="mx-auto mt-5 max-w-4xl text-5xl font-bold leading-tight tracking-tight sm:text-6xl lg:text-7xl">
             Making it easier to find your place in Zimbabwe.
@@ -110,7 +115,7 @@ export default function About() {
 
             <div className="rounded-[2rem] bg-[#f8f4e9] p-8 transition duration-300 hover:-translate-y-1 hover:shadow-xl">
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#155c3a] text-2xl">
-                🔎
+                <FontAwesomeIcon icon={faMagnifyingGlass} />
               </div>
 
               <h3 className="mt-6 text-xl font-bold text-[#1d2923]">
@@ -125,7 +130,7 @@ export default function About() {
 
             <div className="rounded-[2rem] bg-[#f8f4e9] p-8 transition duration-300 hover:-translate-y-1 hover:shadow-xl">
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#e5ad35] text-2xl">
-                🤝
+                <FontAwesomeIcon icon={faHandshake} />
               </div>
 
               <h3 className="mt-6 text-xl font-bold text-[#1d2923]">
@@ -140,7 +145,7 @@ export default function About() {
 
             <div className="rounded-[2rem] bg-[#f8f4e9] p-8 transition duration-300 hover:-translate-y-1 hover:shadow-xl">
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#a85f3f] text-2xl">
-                🏡
+                <FontAwesomeIcon icon={faHouse} />
               </div>
 
               <h3 className="mt-6 text-xl font-bold text-[#1d2923]">
@@ -229,7 +234,7 @@ export default function About() {
 
             <Link
               to="/"
-              className="rounded-full bg-[#0d3f29] px-7 py-3.5 font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#155c3a]"
+              className="rounded-full bg-[#0d3f29] px-7 py-3.5 font-semibold !text-[#e5ad35] transition hover:-translate-y-0.5 hover:bg-[#155c3a]"
             >
               Explore spaces
             </Link>

@@ -12,37 +12,40 @@ import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 export default function App() {
   return (
     <Router>
       <Routes>
+        <Route element={<ProtectedRoute />}>
+          <Route
+            path="/post-space"
+            element={
+              <PrivateRoute>
+                <PostSpace />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/messages"
+            element={
+              <PrivateRoute>
+                <Messages />
+              </PrivateRoute>
+            }
+          />
+          <Route path="/profile" element={<Profile />} />
+        </Route>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/space/:id" element={<SpaceDetail />} />
-        <Route path="/profile" element={<Profile />} />
         <Route path="/about" element={<About />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
-        <Route
-          path="/post-space"
-          element={
-            <PrivateRoute>
-              <PostSpace />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/messages"
-          element={
-            <PrivateRoute>
-              <Messages />
-            </PrivateRoute>
-          }
-        />
       </Routes>
     </Router>
   );

@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faCamera,
+  faLocationDot,
+  faBed,
+  faShower,
+  faCar,
+} from "@fortawesome/free-solid-svg-icons";
 
 export default function SpaceCard({ space }) {
   const [currentImage, setCurrentImage] = useState(0);
@@ -68,7 +76,8 @@ export default function SpaceCard({ space }) {
           {/* IMAGE COUNT */}
           {images.length > 1 && (
             <div className="absolute right-4 top-4 rounded-full border border-white/10 bg-black/30 px-3 py-1.5 text-[11px] font-semibold text-white backdrop-blur-md">
-              📷 {currentImage + 1}/{images.length}
+              <FontAwesomeIcon icon={faCamera} className="mr-1.5" />
+              {currentImage + 1}/{images.length}
             </div>
           )}
 
@@ -109,7 +118,7 @@ export default function SpaceCard({ space }) {
 
           {/* LOCATION */}
           <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-gray-400">
-            <span className="text-sm">📍</span>
+            <FontAwesomeIcon icon={faLocationDot} className="text-sm" />
 
             <span className="truncate">
               {location?.city || "Zimbabwe"}
@@ -141,21 +150,24 @@ export default function SpaceCard({ space }) {
 
               {space.bedrooms != null && (
                 <span className="rounded-full bg-[#f8f4e9] px-3 py-1.5 text-[11px] font-semibold text-gray-600">
-                  🛏 {space.bedrooms}{" "}
+                  <FontAwesomeIcon icon={faBed} className="mr-1.5" />
+                  {space.bedrooms}{" "}
                   {space.bedrooms === 1 ? "bed" : "beds"}
                 </span>
               )}
 
               {space.bathrooms != null && (
                 <span className="rounded-full bg-[#f8f4e9] px-3 py-1.5 text-[11px] font-semibold text-gray-600">
-                  🚿 {space.bathrooms}{" "}
+                  <FontAwesomeIcon icon={faShower} className="mr-1.5" />
+                  {space.bathrooms}{" "}
                   {space.bathrooms === 1 ? "bath" : "baths"}
                 </span>
               )}
 
               {space.parking_spaces != null && (
                 <span className="rounded-full bg-[#f8f4e9] px-3 py-1.5 text-[11px] font-semibold text-gray-600">
-                  🚗 {space.parking_spaces} parking
+                  <FontAwesomeIcon icon={faCar} className="mr-1.5" />
+                  {space.parking_spaces} parking
                 </span>
               )}
 

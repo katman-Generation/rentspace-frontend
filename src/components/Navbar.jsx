@@ -79,7 +79,7 @@ export default function Navbar() {
 
                 <Link
                   to="/register"
-                  className="px-5 py-2.5 bg-[#0d3b2e] hover:bg-[#124b3a] text-white text-sm font-semibold rounded-full transition shadow-sm"
+                  className="px-5 py-2.5 bg-[#0d3b2e] hover:bg-[#124b3a] !text-[#e5ad35] hover:text-[#f5d98b] text-sm font-semibold rounded-full transition shadow-sm"
                 >
                   Create account
                 </Link>

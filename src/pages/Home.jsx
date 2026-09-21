@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faHouse,
+  faLocationDot,
+  faHandshake,
+  faMagnifyingGlass,
+} from "@fortawesome/free-solid-svg-icons";
+
 import Navbar from "../components/Navbar";
 import Hero from "../components/Hero";
 import SearchFilters from "../components/SearchFilters";
@@ -137,7 +145,7 @@ export default function Home() {
             <div className="rounded-[2rem] border border-[#155c3a]/10 bg-white px-6 py-20 text-center shadow-sm">
 
               <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#e5ad35]/15 text-4xl">
-                🏠
+                <FontAwesomeIcon icon={faHouse} />
               </div>
 
               <h3 className="mt-6 text-2xl font-bold text-[#1d2923]">
@@ -168,7 +176,7 @@ export default function Home() {
 
                 <Link
                   to="/post-space"
-                  className="rounded-full bg-[#155c3a] px-6 py-3 font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d3f29]"
+                  className="rounded-full bg-[#155c3a] px-6 py-3 font-semibold !text-[#e5ad35] transition hover:-translate-y-0.5 hover:bg-[#0d3f29]"
                 >
                   List a space
                 </Link>
@@ -225,7 +233,7 @@ export default function Home() {
                 >
 
                   <span className="text-2xl">
-                    📍
+                    <FontAwesomeIcon icon={faLocationDot} />
                   </span>
 
                   <span className="mt-4 block font-semibold">
@@ -273,7 +281,7 @@ export default function Home() {
 
               <Link
                 to="/about"
-                className="mt-7 inline-flex items-center rounded-full bg-[#155c3a] px-6 py-3 font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d3f29]"
+                className="mt-7 inline-flex items-center rounded-full bg-[#155c3a] px-6 py-3 font-semibold !text-[#e5ad35] transition hover:-translate-y-0.5 hover:bg-[#0d3f29]"
               >
                 Our story →
               </Link>
@@ -289,19 +297,19 @@ export default function Home() {
                   <div className="grid gap-8 sm:grid-cols-3 lg:grid-cols-1">
 
                     <MissionItem
-                      icon="🔎"
+                      icon={faMagnifyingGlass}
                       title="Discover"
                       text="Search spaces that match what you're looking for."
                     />
 
                     <MissionItem
-                      icon="🤝"
+                      icon={faHandshake}
                       title="Connect"
                       text="Connect directly with the people behind the spaces."
                     />
 
                     <MissionItem
-                      icon="🏡"
+                      icon={faHouse}
                       title="Move forward"
                       text="Find a space that fits the next chapter of your life."
                     />
@@ -369,7 +377,7 @@ function MissionItem({ icon, title, text }) {
   return (
     <div>
       <span className="text-3xl">
-        {icon}
+        <FontAwesomeIcon icon={icon} />
       </span>
 
       <h3 className="mt-3 font-bold text-[#1d2923]">
