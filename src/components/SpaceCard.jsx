@@ -7,6 +7,8 @@ import {
   faBed,
   faShower,
   faCar,
+  faCircleCheck,
+  faGraduationCap,
 } from "@fortawesome/free-solid-svg-icons";
 
 export default function SpaceCard({ space }) {
@@ -16,15 +18,11 @@ export default function SpaceCard({ space }) {
   const hasImages = images.length > 0;
 
   useEffect(() => {
-    setCurrentImage(0);
-  }, [space?.id]);
-
-  useEffect(() => {
     if (!hasImages || images.length < 2) return;
 
     const interval = setInterval(() => {
       setCurrentImage((prev) =>
-        prev === images.length - 1 ? 0 : prev + 1
+        prev >= images.length - 1 ? 0 : prev + 1
       );
     }, 3500);
 
@@ -33,6 +31,7 @@ export default function SpaceCard({ space }) {
 
   const location = space?.location;
   const spaceType = space?.space_type;
+  const studentDetails = space?.student_details;
 
   const rentalLabel = {
     hour: "Per hour",
@@ -41,6 +40,13 @@ export default function SpaceCard({ space }) {
     month: "Per month",
     year: "Per year",
   };
+
+  const currencySymbol = space?.currency === "ZiG" ? "ZiG " : "$";
+
+  const isStudentListing =
+    space?.category?.slug === "student-accommodation";
+
+  const isVerified = space?.verification_status === "verified";
 
   return (
     <Link
@@ -51,7 +57,6 @@ export default function SpaceCard({ space }) {
 
         {/* IMAGE */}
         <div className="relative h-64 overflow-hidden bg-gray-100">
-
           <img
             src={
               hasImages
@@ -73,9 +78,23 @@ export default function SpaceCard({ space }) {
             </span>
           </div>
 
+          {/* VERIFIED BADGE */}
+          {isVerified && (
+            <div className="absolute right-4 top-4">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-[#e5ad35]/40 bg-black/40 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[#f2c35f] backdrop-blur-md">
+                <FontAwesomeIcon icon={faCircleCheck} />
+                Verified
+              </span>
+            </div>
+          )}
+
           {/* IMAGE COUNT */}
           {images.length > 1 && (
-            <div className="absolute right-4 top-4 rounded-full border border-white/10 bg-black/30 px-3 py-1.5 text-[11px] font-semibold text-white backdrop-blur-md">
+            <div
+              className={`absolute top-14 right-4 rounded-full border border-white/10 bg-black/30 px-3 py-1.5 text-[11px] font-semibold text-white backdrop-blur-md ${
+                isVerified ? "top-14" : "top-4"
+              }`}
+            >
               <FontAwesomeIcon icon={faCamera} className="mr-1.5" />
               {currentImage + 1}/{images.length}
             </div>
@@ -110,7 +129,6 @@ export default function SpaceCard({ space }) {
               ))}
             </div>
           )}
-
         </div>
 
         {/* CONTENT */}
@@ -118,7 +136,10 @@ export default function SpaceCard({ space }) {
 
           {/* LOCATION */}
           <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-gray-400">
-            <FontAwesomeIcon icon={faLocationDot} className="text-sm" />
+            <FontAwesomeIcon
+              icon={faLocationDot}
+              className="text-sm"
+            />
 
             <span className="truncate">
               {location?.city || "Zimbabwe"}
@@ -130,6 +151,28 @@ export default function SpaceCard({ space }) {
           <h3 className="mt-2 line-clamp-1 text-xl font-bold tracking-tight text-[#1d2923] transition-colors group-hover:text-[#155c3a]">
             {space.title}
           </h3>
+
+          {/* STUDENT LISTING INFO */}
+          {isStudentListing && (
+            <div className="mt-3 rounded-2xl bg-[#f8f4e9] px-3.5 py-3">
+              <div className="flex items-center gap-2 text-xs font-bold text-[#155c3a]">
+                <FontAwesomeIcon icon={faGraduationCap} />
+
+                <span className="truncate">
+                  {studentDetails?.institution?.name ||
+                    "Student Accommodation"}
+                </span>
+              </div>
+
+              {studentDetails?.room_type && (
+                <p className="mt-1 text-[11px] text-gray-500">
+                  {studentDetails.room_type}
+                  {studentDetails.distance_to_campus_km != null &&
+                    ` • ${studentDetails.distance_to_campus_km} km from campus`}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* DESCRIPTION */}
           {space.description ? (
@@ -147,10 +190,12 @@ export default function SpaceCard({ space }) {
             space.bathrooms != null ||
             space.parking_spaces != null) && (
             <div className="mt-4 flex flex-wrap gap-2">
-
               {space.bedrooms != null && (
                 <span className="rounded-full bg-[#f8f4e9] px-3 py-1.5 text-[11px] font-semibold text-gray-600">
-                  <FontAwesomeIcon icon={faBed} className="mr-1.5" />
+                  <FontAwesomeIcon
+                    icon={faBed}
+                    className="mr-1.5"
+                  />
                   {space.bedrooms}{" "}
                   {space.bedrooms === 1 ? "bed" : "beds"}
                 </span>
@@ -158,7 +203,10 @@ export default function SpaceCard({ space }) {
 
               {space.bathrooms != null && (
                 <span className="rounded-full bg-[#f8f4e9] px-3 py-1.5 text-[11px] font-semibold text-gray-600">
-                  <FontAwesomeIcon icon={faShower} className="mr-1.5" />
+                  <FontAwesomeIcon
+                    icon={faShower}
+                    className="mr-1.5"
+                  />
                   {space.bathrooms}{" "}
                   {space.bathrooms === 1 ? "bath" : "baths"}
                 </span>
@@ -166,35 +214,37 @@ export default function SpaceCard({ space }) {
 
               {space.parking_spaces != null && (
                 <span className="rounded-full bg-[#f8f4e9] px-3 py-1.5 text-[11px] font-semibold text-gray-600">
-                  <FontAwesomeIcon icon={faCar} className="mr-1.5" />
+                  <FontAwesomeIcon
+                    icon={faCar}
+                    className="mr-1.5"
+                  />
                   {space.parking_spaces} parking
                 </span>
               )}
-
             </div>
           )}
 
           {/* PRICE */}
           <div className="mt-auto flex items-end justify-between border-t border-gray-100 pt-4">
-
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-                {rentalLabel[space.rental_period] || "Per month"}
+                {space.listing_purpose === "sale"
+                  ? "For sale"
+                  : rentalLabel[space.rental_period] || "Per month"}
               </p>
 
               <div className="mt-0.5 flex items-baseline gap-1">
                 <span className="text-2xl font-bold tracking-tight text-[#155c3a]">
-                  ${space.price}
+                  {currencySymbol}
+                  {space.price}
                 </span>
               </div>
             </div>
 
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#f8f4e9] text-lg text-[#155c3a] transition-all duration-300 group-hover:bg-[#e5ad35] group-hover:text-[#0d3f29] group-hover:translate-x-1">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#f8f4e9] text-lg text-[#155c3a] transition-all duration-300 group-hover:translate-x-1 group-hover:bg-[#e5ad35] group-hover:text-[#0d3f29]">
               →
             </div>
-
           </div>
-
         </div>
       </article>
     </Link>

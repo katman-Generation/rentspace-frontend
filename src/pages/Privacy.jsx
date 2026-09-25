@@ -126,7 +126,7 @@ export default function Privacy() {
                 Zimbabwe's data protection framework requires processing to be
                 fair and lawful and requires personal information to be
                 collected for specified, explicit and legitimate purposes.
-                :contentReference[oaicite:1]{index=1}
+                
               </p>
             </section>
 
@@ -174,7 +174,7 @@ export default function Privacy() {
                 Where personal information is transferred outside Zimbabwe,
                 RentSpace will take account of applicable requirements relating
                 to cross-border transfers and appropriate protection of
-                personal information. :contentReference[oaicite:2]{index=2}
+                personal information. 
               </p>
             </section>
 
@@ -282,7 +282,7 @@ export default function Privacy() {
                 Zimbabwe's current data protection guidance specifically
                 addresses children's personal information and recognises the
                 need for legal guardian involvement where applicable.
-                :contentReference[oaicite:3]{index=3}
+                
               </p>
             </section>
 

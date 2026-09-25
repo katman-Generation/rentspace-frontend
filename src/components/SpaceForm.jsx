@@ -3,6 +3,29 @@ import { useNavigate } from "react-router-dom";
 import api from "../api/api";
 import ImagePicker from "./ImagePicker";
 
+const CATEGORY_NAMES = {
+  BUY: "Buy",
+  RENT: "Rent",
+  STUDENT: "Student Accommodation",
+};
+
+const ROOM_TYPES = [
+  { value: "private_room", label: "Private Room" },
+  { value: "shared_room", label: "Shared Room" },
+  { value: "entire_unit", label: "Entire Unit" },
+];
+
+const BATHROOM_TYPES = [
+  { value: "private", label: "Private Bathroom" },
+  { value: "shared", label: "Shared Bathroom" },
+];
+
+const MEAL_PLANS = [
+  { value: "none", label: "No Meals" },
+  { value: "optional", label: "Meals Available" },
+  { value: "included", label: "Meals Included" },
+];
+
 export default function SpaceForm({
   initialData = null,
   onSaved,
@@ -37,6 +60,14 @@ export default function SpaceForm({
 
   const [locationId, setLocationId] = useState(
     initialData?.location?.id || ""
+  );
+
+  const [listingPurpose, setListingPurpose] = useState(
+    initialData?.listing_purpose || "rent"
+  );
+
+  const [currency, setCurrency] = useState(
+    initialData?.currency || "USD"
   );
 
   const [rentalPeriod, setRentalPeriod] = useState(
@@ -86,6 +117,43 @@ export default function SpaceForm({
   );
 
   /* =========================
+     STUDENT ACCOMMODATION
+  ========================= */
+
+  const existingStudentDetails =
+    initialData?.student_details || null;
+
+  const [institutionId, setInstitutionId] = useState(
+    existingStudentDetails?.institution?.id ||
+      existingStudentDetails?.institution_id ||
+      ""
+  );
+
+  const [campus, setCampus] = useState(
+    existingStudentDetails?.campus || ""
+  );
+
+  const [distanceToCampus, setDistanceToCampus] = useState(
+    existingStudentDetails?.distance_to_campus_km ?? ""
+  );
+
+  const [roomType, setRoomType] = useState(
+    existingStudentDetails?.room_type || "private_room"
+  );
+
+  const [roomsAvailable, setRoomsAvailable] = useState(
+    existingStudentDetails?.rooms_available ?? 1
+  );
+
+  const [bathroomType, setBathroomType] = useState(
+    existingStudentDetails?.bathroom_type || ""
+  );
+
+  const [mealPlan, setMealPlan] = useState(
+    existingStudentDetails?.meal_plan || "none"
+  );
+
+  /* =========================
      DATABASE OPTIONS
   ========================= */
 
@@ -93,6 +161,7 @@ export default function SpaceForm({
   const [spaceTypes, setSpaceTypes] = useState([]);
   const [locations, setLocations] = useState([]);
   const [amenities, setAmenities] = useState([]);
+  const [institutions, setInstitutions] = useState([]);
 
   const [loadingOptions, setLoadingOptions] = useState(true);
 
@@ -105,6 +174,43 @@ export default function SpaceForm({
 
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+
+  /* =========================
+     HELPERS
+  ========================= */
+
+  const getResults = (response) => {
+    if (Array.isArray(response?.data)) {
+      return response.data;
+    }
+
+    if (Array.isArray(response?.data?.results)) {
+      return response.data.results;
+    }
+
+    return [];
+  };
+
+  const getCategoryById = (id) => {
+    return categories.find(
+      (category) => String(category.id) === String(id)
+    );
+  };
+
+  const selectedCategory = getCategoryById(categoryId);
+
+  const selectedCategoryName =
+    selectedCategory?.name || "";
+
+  const isBuyCategory =
+    selectedCategoryName.toLowerCase() ===
+    CATEGORY_NAMES.BUY.toLowerCase();
+
+  const isStudentCategory =
+    selectedCategoryName.toLowerCase() ===
+    CATEGORY_NAMES.STUDENT.toLowerCase();
+
+  const currencySymbol = currency === "ZiG" ? "ZiG" : "$";
 
   /* =========================
      LOAD DATABASE OPTIONS
@@ -121,44 +227,20 @@ export default function SpaceForm({
           typesResponse,
           locationsResponse,
           amenitiesResponse,
+          institutionsResponse,
         ] = await Promise.all([
           api.get("/api/spaces/categories/"),
           api.get("/api/spaces/space-types/"),
           api.get("/api/spaces/locations/"),
           api.get("/api/spaces/amenities/"),
+          api.get("/api/spaces/institutions/"),
         ]);
-
-        /*
-         * Support both:
-         *
-         * [
-         *   {...},
-         *   {...}
-         * ]
-         *
-         * and DRF:
-         *
-         * {
-         *   results: [...]
-         * }
-         */
-
-        const getResults = (response) => {
-          if (Array.isArray(response?.data)) {
-            return response.data;
-          }
-
-          if (Array.isArray(response?.data?.results)) {
-            return response.data.results;
-          }
-
-          return [];
-        };
 
         setCategories(getResults(categoriesResponse));
         setSpaceTypes(getResults(typesResponse));
         setLocations(getResults(locationsResponse));
         setAmenities(getResults(amenitiesResponse));
+        setInstitutions(getResults(institutionsResponse));
       } catch (error) {
         console.error("Failed to load space options:", error);
 
@@ -180,9 +262,23 @@ export default function SpaceForm({
 
   const filteredSpaceTypes = categoryId
     ? spaceTypes.filter(
-        (type) => String(type.category) === String(categoryId)
+        (type) =>
+          String(type.category) === String(categoryId)
       )
     : [];
+
+  /* =========================
+     KEEP LISTING PURPOSE
+     ALIGNED WITH CATEGORY
+  ========================= */
+
+  useEffect(() => {
+    if (isBuyCategory) {
+      setListingPurpose("sale");
+    } else if (categoryId) {
+      setListingPurpose("rent");
+    }
+  }, [categoryId, isBuyCategory]);
 
   /* =========================
      CATEGORY CHANGE
@@ -192,14 +288,36 @@ export default function SpaceForm({
     const newCategoryId = e.target.value;
 
     setCategoryId(newCategoryId);
-
-    /*
-     * A space type belongs to a category.
-     * Therefore when the category changes,
-     * reset the selected space type.
-     */
-
     setSpaceTypeId("");
+
+    const newCategory = categories.find(
+      (category) =>
+        String(category.id) === String(newCategoryId)
+    );
+
+    const newCategoryName =
+      newCategory?.name?.toLowerCase() || "";
+
+    if (
+      newCategoryName === CATEGORY_NAMES.BUY.toLowerCase()
+    ) {
+      setListingPurpose("sale");
+    } else {
+      setListingPurpose("rent");
+    }
+
+    if (
+      newCategoryName !==
+      CATEGORY_NAMES.STUDENT.toLowerCase()
+    ) {
+      setInstitutionId("");
+      setCampus("");
+      setDistanceToCampus("");
+      setRoomType("private_room");
+      setRoomsAvailable(1);
+      setBathroomType("");
+      setMealPlan("none");
+    }
   };
 
   /* =========================
@@ -233,6 +351,52 @@ export default function SpaceForm({
   }, []);
 
   /* =========================
+     VALIDATION
+  ========================= */
+
+  const validateForm = () => {
+    if (!categoryId) {
+      return "Please choose a category.";
+    }
+
+    if (!spaceTypeId) {
+      return "Please choose a space type.";
+    }
+
+    if (!locationId) {
+      return "Please choose a location.";
+    }
+
+    if (!title.trim()) {
+      return "Please enter a title for your space.";
+    }
+
+    if (!description.trim()) {
+      return "Please describe your space.";
+    }
+
+    if (!price) {
+      return "Please enter a price.";
+    }
+
+    if (isStudentCategory) {
+      if (!institutionId) {
+        return "Please choose the institution.";
+      }
+
+      if (!roomType) {
+        return "Please choose a room type.";
+      }
+
+      if (!roomsAvailable || Number(roomsAvailable) < 1) {
+        return "Please enter the number of rooms available.";
+      }
+    }
+
+    return "";
+  };
+
+  /* =========================
      SUBMIT
   ========================= */
 
@@ -242,18 +406,10 @@ export default function SpaceForm({
     setErrorMessage("");
     setSuccessMessage("");
 
-    if (!categoryId) {
-      setErrorMessage("Please choose a category.");
-      return;
-    }
+    const validationError = validateForm();
 
-    if (!spaceTypeId) {
-      setErrorMessage("Please choose a space type.");
-      return;
-    }
-
-    if (!locationId) {
-      setErrorMessage("Please choose a location.");
+    if (validationError) {
+      setErrorMessage(validationError);
       return;
     }
 
@@ -261,19 +417,23 @@ export default function SpaceForm({
     setIsSubmitting(true);
 
     progressTimerRef.current = setInterval(() => {
-      setProgress((prev) => (prev < 90 ? prev + 8 : prev));
+      setProgress((prev) =>
+        prev < 90 ? prev + 8 : prev
+      );
     }, 150);
 
     const formData = new FormData();
 
     /* Required fields */
 
-    formData.append("title", title);
-    formData.append("description", description);
+    formData.append("title", title.trim());
+    formData.append("description", description.trim());
     formData.append("price", price);
     formData.append("category_id", categoryId);
     formData.append("space_type_id", spaceTypeId);
     formData.append("location_id", locationId);
+    formData.append("listing_purpose", listingPurpose);
+    formData.append("currency", currency);
     formData.append("rental_period", rentalPeriod);
 
     /* Optional fields */
@@ -318,6 +478,26 @@ export default function SpaceForm({
       formData.append("amenities", id);
     });
 
+    /* Student accommodation */
+
+    if (isStudentCategory) {
+      formData.append(
+        "student_details",
+        JSON.stringify({
+          institution_id: institutionId,
+          campus: campus.trim(),
+          distance_to_campus_km:
+            distanceToCampus === ""
+              ? null
+              : distanceToCampus,
+          room_type: roomType,
+          rooms_available: Number(roomsAvailable),
+          bathroom_type: bathroomType || null,
+          meal_plan: mealPlan,
+        })
+      );
+    }
+
     /* Images */
 
     images.forEach((image) => {
@@ -333,7 +513,10 @@ export default function SpaceForm({
           formData
         );
       } else {
-        await api.post("/api/spaces/create/", formData);
+        await api.post(
+          "/api/spaces/create/",
+          formData
+        );
       }
 
       if (progressTimerRef.current) {
@@ -368,19 +551,31 @@ export default function SpaceForm({
 
       setProgress(0);
 
-      console.error("Failed to save space:", error);
+      console.error(
+        "Failed to save space:",
+        error
+      );
 
-      const backendError = error?.response?.data;
+      const backendError =
+        error?.response?.data;
 
       if (backendError?.detail) {
         setErrorMessage(backendError.detail);
-      } else if (typeof backendError === "object") {
-        const firstError = Object.values(backendError)?.[0];
+      } else if (
+        typeof backendError === "object" &&
+        backendError !== null
+      ) {
+        const firstError =
+          Object.values(backendError)?.[0];
 
         if (Array.isArray(firstError)) {
-          setErrorMessage(firstError[0]);
+          setErrorMessage(
+            firstError[0]
+          );
         } else if (firstError) {
-          setErrorMessage(String(firstError));
+          setErrorMessage(
+            String(firstError)
+          );
         } else {
           setErrorMessage(
             "We couldn't save your space. Please check your details and try again."
@@ -428,7 +623,9 @@ export default function SpaceForm({
         <div className="relative">
 
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#e5ad35]">
-            {isEdit ? "Manage your listing" : "List your space"}
+            {isEdit
+              ? "Manage your listing"
+              : "List your space"}
           </p>
 
           <h2 className="mt-2 text-2xl font-bold text-white md:text-3xl">
@@ -448,7 +645,9 @@ export default function SpaceForm({
 
       {/* STATUS */}
 
-      {(successMessage || errorMessage || isSubmitting) && (
+      {(successMessage ||
+        errorMessage ||
+        isSubmitting) && (
         <div className="px-6 pt-6 md:px-10">
 
           {isSubmitting && (
@@ -478,7 +677,9 @@ export default function SpaceForm({
 
                 <div
                   className="h-full rounded-full bg-[#e5ad35] transition-all duration-150"
-                  style={{ width: `${progress}%` }}
+                  style={{
+                    width: `${progress}%`,
+                  }}
                 />
 
               </div>
@@ -486,17 +687,18 @@ export default function SpaceForm({
             </div>
           )}
 
-          {successMessage && !isSubmitting && (
-            <div className="flex items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
+          {successMessage &&
+            !isSubmitting && (
+              <div className="flex items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
 
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-600 text-white">
-                ✓
-              </span>
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-600 text-white">
+                  ✓
+                </span>
 
-              {successMessage}
+                {successMessage}
 
-            </div>
-          )}
+              </div>
+            )}
 
           {errorMessage && (
             <div className="flex items-start gap-3 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
@@ -523,7 +725,6 @@ export default function SpaceForm({
         {/* PHOTOS */}
 
         <section>
-
           <SectionHeading
             number="01"
             title="Photos"
@@ -536,13 +737,11 @@ export default function SpaceForm({
               setImages={setImages}
             />
           </div>
-
         </section>
 
         {/* BASIC DETAILS */}
 
         <section>
-
           <SectionHeading
             number="02"
             title="Space details"
@@ -555,43 +754,41 @@ export default function SpaceForm({
               label="Space title"
               hint="Example: Modern 3-bedroom house in Borrowdale"
             >
-
               <input
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) =>
+                  setTitle(e.target.value)
+                }
                 placeholder="Give your space a memorable title"
                 className="premium-input"
                 disabled={isSubmitting}
                 required
               />
-
             </Field>
 
             <Field
               label="Description"
               hint="Tell people what makes this space special."
             >
-
               <textarea
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) =>
+                  setDescription(e.target.value)
+                }
                 placeholder="Describe the space, its features, surroundings and anything visitors should know..."
                 rows={6}
                 className="premium-input resize-none"
                 disabled={isSubmitting}
                 required
               />
-
             </Field>
 
           </div>
-
         </section>
 
         {/* CATEGORY + SPACE TYPE */}
 
         <section>
-
           <SectionHeading
             number="03"
             title="What kind of space is it?"
@@ -600,18 +797,18 @@ export default function SpaceForm({
 
           <div className="mt-6 grid gap-5 md:grid-cols-2">
 
-            {/* CATEGORY */}
-
             <Field
               label="Category"
-              hint="Choose the main category."
+              hint="Buy, Rent, or Student Accommodation."
             >
-
               <select
                 value={categoryId}
                 onChange={handleCategoryChange}
                 className="premium-input appearance-none"
-                disabled={isSubmitting || loadingOptions}
+                disabled={
+                  isSubmitting ||
+                  loadingOptions
+                }
                 required
               >
 
@@ -631,10 +828,7 @@ export default function SpaceForm({
                 ))}
 
               </select>
-
             </Field>
-
-            {/* SPACE TYPE */}
 
             <Field
               label="Space type"
@@ -644,11 +838,12 @@ export default function SpaceForm({
                   : "Choose a category first."
               }
             >
-
               <select
                 value={spaceTypeId}
                 onChange={(e) =>
-                  setSpaceTypeId(e.target.value)
+                  setSpaceTypeId(
+                    e.target.value
+                  )
                 }
                 className="premium-input appearance-none"
                 disabled={
@@ -662,52 +857,122 @@ export default function SpaceForm({
                 <option value="">
                   {!categoryId
                     ? "Choose a category first"
-                    : filteredSpaceTypes.length === 0
+                    : filteredSpaceTypes.length ===
+                      0
                     ? "No types available"
                     : "Choose a space type"}
                 </option>
 
-                {filteredSpaceTypes.map((type) => (
-                  <option
-                    key={type.id}
-                    value={type.id}
-                  >
-                    {type.name}
-                  </option>
-                ))}
+                {filteredSpaceTypes.map(
+                  (type) => (
+                    <option
+                      key={type.id}
+                      value={type.id}
+                    >
+                      {type.name}
+                    </option>
+                  )
+                )}
 
               </select>
-
             </Field>
 
           </div>
+        </section>
 
+        {/* LISTING PURPOSE + CURRENCY */}
+
+        <section>
+          <SectionHeading
+            number="04"
+            title="Listing & currency"
+            description="Tell people whether the space is being rented or sold and which currency you're using."
+          />
+
+          <div className="mt-6 grid gap-5 md:grid-cols-2">
+
+            <Field
+              label="Listing purpose"
+              hint={
+                isBuyCategory
+                  ? "Buy listings are automatically marked for sale."
+                  : "This listing will be offered for rent."
+              }
+            >
+              <select
+                value={listingPurpose}
+                onChange={(e) =>
+                  setListingPurpose(
+                    e.target.value
+                  )
+                }
+                className="premium-input appearance-none"
+                disabled={
+                  isSubmitting ||
+                  isBuyCategory
+                }
+              >
+                <option value="rent">
+                  For Rent
+                </option>
+
+                <option value="sale">
+                  For Sale
+                </option>
+              </select>
+            </Field>
+
+            <Field
+              label="Currency"
+              hint="Choose the currency shown to people."
+            >
+              <select
+                value={currency}
+                onChange={(e) =>
+                  setCurrency(e.target.value)
+                }
+                className="premium-input appearance-none"
+                disabled={isSubmitting}
+              >
+                <option value="USD">
+                  US Dollar (USD)
+                </option>
+
+                <option value="ZiG">
+                  Zimbabwe Gold (ZiG)
+                </option>
+              </select>
+            </Field>
+
+          </div>
         </section>
 
         {/* LOCATION */}
 
         <section>
-
           <SectionHeading
-            number="04"
+            number="05"
             title="Location"
             description="Tell people where your space is located."
           />
 
           <div className="mt-6">
-
             <Field
               label="Location"
               hint="Choose the location closest to your space."
             >
-
               <select
                 value={locationId}
                 onChange={(e) =>
-                  setLocationId(e.target.value)
+                  setLocationId(
+                    e.target.value
+                  )
                 }
                 className="premium-input appearance-none"
-                disabled={isSubmitting || loadingOptions}
+                disabled={
+                  isSubmitting ||
+                  loadingOptions
+                }
                 required
               >
 
@@ -717,46 +982,229 @@ export default function SpaceForm({
                     : "Choose a location"}
                 </option>
 
-                {locations.map((location) => (
-                  <option
-                    key={location.id}
-                    value={location.id}
-                  >
-                    {location.province
-                      ? `${location.province} — ${location.city} — ${location.area}`
-                      : `${location.city} — ${location.area}`}
-                  </option>
-                ))}
+                {locations.map(
+                  (location) => (
+                    <option
+                      key={location.id}
+                      value={location.id}
+                    >
+                      {location.province
+                        ? `${location.province} — ${location.city} — ${location.area}`
+                        : `${location.city} — ${location.area}`}
+                    </option>
+                  )
+                )}
 
               </select>
-
             </Field>
-
           </div>
-
         </section>
+
+        {/* STUDENT ACCOMMODATION */}
+
+        {isStudentCategory && (
+          <section>
+            <SectionHeading
+              number="06"
+              title="Student accommodation"
+              description="Give students the information they need to find accommodation near their institution."
+            />
+
+            <div className="mt-6 grid gap-5 md:grid-cols-2">
+
+              <Field
+                label="Institution"
+                hint="Choose the university or college this accommodation serves."
+              >
+                <select
+                  value={institutionId}
+                  onChange={(e) =>
+                    setInstitutionId(
+                      e.target.value
+                    )
+                  }
+                  className="premium-input appearance-none"
+                  disabled={
+                    isSubmitting ||
+                    loadingOptions
+                  }
+                  required
+                >
+
+                  <option value="">
+                    {loadingOptions
+                      ? "Loading institutions..."
+                      : "Choose an institution"}
+                  </option>
+
+                  {institutions.map(
+                    (institution) => (
+                      <option
+                        key={institution.id}
+                        value={institution.id}
+                      >
+                        {institution.name}
+                        {institution.campus
+                          ? ` — ${institution.campus}`
+                          : ""}
+                      </option>
+                    )
+                  )}
+
+                </select>
+              </Field>
+
+              <Field
+                label="Campus"
+                hint="Enter the specific campus name."
+              >
+                <input
+                  value={campus}
+                  onChange={(e) =>
+                    setCampus(e.target.value)
+                  }
+                  placeholder="Example: Main Campus"
+                  className="premium-input"
+                  disabled={isSubmitting}
+                />
+              </Field>
+
+              <NumberField
+                label="Distance to campus (km)"
+                value={distanceToCampus}
+                setValue={setDistanceToCampus}
+                disabled={isSubmitting}
+                step="0.01"
+              />
+
+              <Field
+                label="Room type"
+                hint="What kind of accommodation is available?"
+              >
+                <select
+                  value={roomType}
+                  onChange={(e) =>
+                    setRoomType(
+                      e.target.value
+                    )
+                  }
+                  className="premium-input appearance-none"
+                  disabled={isSubmitting}
+                  required
+                >
+                  {ROOM_TYPES.map(
+                    (option) => (
+                      <option
+                        key={option.value}
+                        value={option.value}
+                      >
+                        {option.label}
+                      </option>
+                    )
+                  )}
+                </select>
+              </Field>
+
+              <NumberField
+                label="Rooms available"
+                value={roomsAvailable}
+                setValue={setRoomsAvailable}
+                disabled={isSubmitting}
+              />
+
+              <Field
+                label="Bathroom"
+                hint="Choose whether the bathroom is private or shared."
+              >
+                <select
+                  value={bathroomType}
+                  onChange={(e) =>
+                    setBathroomType(
+                      e.target.value
+                    )
+                  }
+                  className="premium-input appearance-none"
+                  disabled={isSubmitting}
+                >
+                  <option value="">
+                    Not specified
+                  </option>
+
+                  {BATHROOM_TYPES.map(
+                    (option) => (
+                      <option
+                        key={option.value}
+                        value={option.value}
+                      >
+                        {option.label}
+                      </option>
+                    )
+                  )}
+                </select>
+              </Field>
+
+              <Field
+                label="Meal plan"
+                hint="Tell students whether meals are available."
+              >
+                <select
+                  value={mealPlan}
+                  onChange={(e) =>
+                    setMealPlan(
+                      e.target.value
+                    )
+                  }
+                  className="premium-input appearance-none"
+                  disabled={isSubmitting}
+                >
+                  {MEAL_PLANS.map(
+                    (option) => (
+                      <option
+                        key={option.value}
+                        value={option.value}
+                      >
+                        {option.label}
+                      </option>
+                    )
+                  )}
+                </select>
+              </Field>
+
+            </div>
+          </section>
+        )}
 
         {/* PRICE */}
 
         <section>
-
           <SectionHeading
-            number="05"
-            title="Pricing"
-            description="Set your rental price and payment period."
+            number={isStudentCategory ? "07" : "06"}
+            title={
+              listingPurpose === "sale"
+                ? "Sale price"
+                : "Pricing"
+            }
+            description={
+              listingPurpose === "sale"
+                ? "Set the asking price for this property."
+                : "Set your rental price and payment period."
+            }
           />
 
           <div className="mt-6 grid gap-5 md:grid-cols-2">
 
             <Field
-              label="Price"
-              hint="Enter the rental price in USD."
+              label={
+                listingPurpose === "sale"
+                  ? "Sale price"
+                  : "Price"
+              }
+              hint={`Enter the price in ${currency}.`}
             >
-
               <div className="relative">
 
                 <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-[#80631d]">
-                  $
+                  {currencySymbol}
                 </span>
 
                 <input
@@ -765,100 +1213,115 @@ export default function SpaceForm({
                   step="0.01"
                   value={price}
                   onChange={(e) =>
-                    setPrice(e.target.value)
+                    setPrice(
+                      e.target.value
+                    )
                   }
-                  placeholder="500"
-                  className="premium-input pl-10"
+                  placeholder={
+                    currency === "ZiG"
+                      ? "100000"
+                      : "500"
+                  }
+                  className="premium-input pl-14"
                   disabled={isSubmitting}
                   required
                 />
 
               </div>
-
             </Field>
 
-            <Field
-              label="Rental period"
-              hint="How is the price charged?"
-            >
-
-              <select
-                value={rentalPeriod}
-                onChange={(e) =>
-                  setRentalPeriod(e.target.value)
-                }
-                className="premium-input appearance-none"
-                disabled={isSubmitting}
-                required
+            {listingPurpose !== "sale" && (
+              <Field
+                label="Rental period"
+                hint="How is the price charged?"
               >
-
-                <option value="hour">Per Hour</option>
-                <option value="day">Per Day</option>
-                <option value="week">Per Week</option>
-                <option value="month">Per Month</option>
-                <option value="year">Per Year</option>
-
-              </select>
-
-            </Field>
-
-            <Field
-              label="Security deposit"
-              hint="Optional."
-            >
-
-              <div className="relative">
-
-                <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-[#80631d]">
-                  $
-                </span>
-
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={deposit}
+                <select
+                  value={rentalPeriod}
                   onChange={(e) =>
-                    setDeposit(e.target.value)
+                    setRentalPeriod(
+                      e.target.value
+                    )
                   }
-                  placeholder="Optional"
-                  className="premium-input pl-10"
+                  className="premium-input appearance-none"
                   disabled={isSubmitting}
-                />
+                  required
+                >
+                  <option value="hour">
+                    Per Hour
+                  </option>
+                  <option value="day">
+                    Per Day
+                  </option>
+                  <option value="week">
+                    Per Week
+                  </option>
+                  <option value="month">
+                    Per Month
+                  </option>
+                  <option value="year">
+                    Per Year
+                  </option>
+                </select>
+              </Field>
+            )}
 
-              </div>
+            {listingPurpose !== "sale" && (
+              <Field
+                label="Security deposit"
+                hint="Optional."
+              >
+                <div className="relative">
 
-            </Field>
+                  <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-[#80631d]">
+                    {currencySymbol}
+                  </span>
+
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={deposit}
+                    onChange={(e) =>
+                      setDeposit(
+                        e.target.value
+                      )
+                    }
+                    placeholder="Optional"
+                    className="premium-input pl-14"
+                    disabled={isSubmitting}
+                  />
+
+                </div>
+              </Field>
+            )}
 
             <Field
               label="Available from"
               hint="Optional."
             >
-
               <input
                 type="date"
                 value={availableFrom}
                 onChange={(e) =>
-                  setAvailableFrom(e.target.value)
+                  setAvailableFrom(
+                    e.target.value
+                  )
                 }
                 className="premium-input"
                 disabled={isSubmitting}
               />
-
             </Field>
 
           </div>
-
         </section>
 
         {/* PROPERTY FEATURES */}
 
         <section>
-
           <SectionHeading
-            number="06"
+            number={isStudentCategory ? "08" : "07"}
             title="Space features"
-            description="Add useful details so renters know what to expect."
+            description="Add useful details so people know what to expect."
           />
 
           <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -900,16 +1363,16 @@ export default function SpaceForm({
             />
 
             <Field label="Furnished">
-
               <select
                 value={furnished}
                 onChange={(e) =>
-                  setFurnished(e.target.value)
+                  setFurnished(
+                    e.target.value
+                  )
                 }
                 className="premium-input appearance-none"
                 disabled={isSubmitting}
               >
-
                 <option value="">
                   Not specified
                 </option>
@@ -921,22 +1384,18 @@ export default function SpaceForm({
                 <option value="false">
                   Unfurnished
                 </option>
-
               </select>
-
             </Field>
 
           </div>
-
         </section>
 
         {/* AMENITIES */}
 
         {amenities.length > 0 && (
           <section>
-
             <SectionHeading
-              number="07"
+              number={isStudentCategory ? "09" : "08"}
               title="Amenities"
               description="Select the features available at your space."
             />
@@ -944,16 +1403,19 @@ export default function SpaceForm({
             <div className="mt-6 grid gap-3 sm:grid-cols-2 md:grid-cols-3">
 
               {amenities.map((amenity) => {
-
                 const selected =
-                  amenityIds.includes(amenity.id);
+                  amenityIds.includes(
+                    amenity.id
+                  );
 
                 return (
                   <button
                     key={amenity.id}
                     type="button"
                     onClick={() =>
-                      toggleAmenity(amenity.id)
+                      toggleAmenity(
+                        amenity.id
+                      )
                     }
                     disabled={isSubmitting}
                     className={`rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition ${
@@ -962,34 +1424,36 @@ export default function SpaceForm({
                         : "border-gray-200 bg-[#fafaf8] text-gray-700 hover:border-[#0d3b2e]/30 hover:bg-white"
                     }`}
                   >
-
                     <span className="flex items-center justify-between gap-3">
-
                       {amenity.name}
 
                       {selected && (
                         <span>✓</span>
                       )}
-
                     </span>
-
                   </button>
                 );
               })}
 
             </div>
-
           </section>
         )}
 
         {/* AVAILABILITY */}
 
         <section>
-
           <SectionHeading
-            number={amenities.length > 0 ? "08" : "07"}
+            number={
+              amenities.length > 0
+                ? isStudentCategory
+                  ? "10"
+                  : "09"
+                : isStudentCategory
+                ? "09"
+                : "08"
+            }
             title="Availability"
-            description="Let renters know whether this space is currently available."
+            description="Let people know whether this space is currently available."
           />
 
           <div className="mt-6">
@@ -997,7 +1461,9 @@ export default function SpaceForm({
             <button
               type="button"
               onClick={() =>
-                setIsAvailable((current) => !current)
+                setIsAvailable(
+                  (current) => !current
+                )
               }
               disabled={isSubmitting}
               className={`flex w-full items-center justify-between rounded-2xl border p-4 text-left transition ${
@@ -1008,7 +1474,6 @@ export default function SpaceForm({
             >
 
               <div>
-
                 <p className="font-bold text-[#18231e]">
                   {isAvailable
                     ? "Space is available"
@@ -1017,10 +1482,9 @@ export default function SpaceForm({
 
                 <p className="mt-1 text-xs text-gray-500">
                   {isAvailable
-                    ? "Renters can see this listing as available."
-                    : "Renters will see this space as unavailable."}
+                    ? "People can see this listing as available."
+                    : "People will see this space as unavailable."}
                 </p>
-
               </div>
 
               <span
@@ -1030,7 +1494,6 @@ export default function SpaceForm({
                     : "bg-gray-300"
                 }`}
               >
-
                 <span
                   className={`h-6 w-6 rounded-full bg-white shadow transition-transform ${
                     isAvailable
@@ -1038,13 +1501,11 @@ export default function SpaceForm({
                       : "translate-x-0"
                   }`}
                 />
-
               </span>
 
             </button>
 
           </div>
-
         </section>
 
         {/* ACTIONS */}
@@ -1070,7 +1531,6 @@ export default function SpaceForm({
             }
             className="group inline-flex items-center justify-center gap-3 rounded-full bg-[#0d3b2e] px-8 py-3.5 font-bold text-white shadow-lg transition duration-300 hover:-translate-y-0.5 hover:bg-[#124c3a] hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60"
           >
-
             {isSubmitting
               ? isEdit
                 ? "Updating..."
@@ -1084,7 +1544,6 @@ export default function SpaceForm({
                 →
               </span>
             )}
-
           </button>
 
         </div>
@@ -1094,7 +1553,6 @@ export default function SpaceForm({
       {/* LOCAL STYLES */}
 
       <style>{`
-
         .premium-input {
           width: 100%;
           border-radius: 1rem;
@@ -1130,7 +1588,6 @@ export default function SpaceForm({
           cursor: not-allowed;
           opacity: 0.6;
         }
-
       `}</style>
 
     </div>
@@ -1154,7 +1611,6 @@ function SectionHeading({
       </div>
 
       <div>
-
         <h3 className="text-xl font-bold text-[#18231e]">
           {title}
         </h3>
@@ -1162,7 +1618,6 @@ function SectionHeading({
         <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-500">
           {description}
         </p>
-
       </div>
 
     </div>
@@ -1180,7 +1635,6 @@ function Field({
 }) {
   return (
     <div>
-
       <label className="mb-2 block text-sm font-bold text-[#26342d]">
         {label}
       </label>
@@ -1192,7 +1646,6 @@ function Field({
           {hint}
         </p>
       )}
-
     </div>
   );
 }
@@ -1210,7 +1663,6 @@ function NumberField({
 }) {
   return (
     <Field label={label}>
-
       <input
         type="number"
         min="0"
@@ -1223,7 +1675,6 @@ function NumberField({
         className="premium-input"
         disabled={disabled}
       />
-
     </Field>
   );
 }

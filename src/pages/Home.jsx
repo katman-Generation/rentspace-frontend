@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -14,38 +14,68 @@ import Hero from "../components/Hero";
 import SearchFilters from "../components/SearchFilters";
 import SpaceCard from "../components/SpaceCard";
 import Footer from "../components/Footer";
-import api from "../api/api";
+import { getSpaces } from "../api/api";
 
 export default function Home() {
+  const [searchParams] = useSearchParams();
+
   const [spaces, setSpaces] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeLocation, setActiveLocation] = useState("");
+  const [activeCategory, setActiveCategory] = useState("");
 
   const fetchSpaces = async (params = {}) => {
     try {
       setLoading(true);
 
-      const res = await api.get("/api/spaces/", {
-        params,
-      });
+      const res = await getSpaces(params);
 
       setSpaces(res.data);
     } catch (err) {
       console.error("Failed to fetch spaces", err);
+      setSpaces([]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchSpaces();
-  }, []);
+    const category = searchParams.get("category") || "";
+
+    setActiveCategory(category);
+
+    fetchSpaces(
+      category
+        ? {
+            category,
+          }
+        : {}
+    );
+  }, [searchParams]);
+
+  const handleSearch = (params = {}) => {
+    setActiveLocation(params.city || "");
+
+    setActiveCategory(params.category || "");
+
+    fetchSpaces(params);
+
+    setTimeout(() => {
+      document
+        .getElementById("explore")
+        ?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+    }, 100);
+  };
 
   const searchLocation = (location) => {
     setActiveLocation(location);
 
     fetchSpaces({
       city: location,
+      category: activeCategory || undefined,
     });
 
     setTimeout(() => {
@@ -57,6 +87,30 @@ export default function Home() {
         });
     }, 100);
   };
+
+  const clearFilters = () => {
+    setActiveLocation("");
+    setActiveCategory("");
+    fetchSpaces();
+  };
+
+  const categoryLabel = {
+    buy: "Properties for sale",
+    rent: "Spaces for rent",
+    "student-accommodation": "Student Living",
+  };
+
+  const heading =
+    categoryLabel[activeCategory] || "Find your next space.";
+
+  const description =
+    activeCategory === "student-accommodation"
+      ? "Discover student houses, private rooms, shared rooms and student flats across Zimbabwe."
+      : activeCategory === "buy"
+        ? "Explore properties, land and commercial spaces available to buy across Zimbabwe."
+        : activeCategory === "rent"
+          ? "Explore homes, rooms, shops, offices and other spaces available to rent."
+          : "Explore spaces listed by people across Zimbabwe.";
 
   return (
     <div className="min-h-screen bg-[#f8f4e9]">
@@ -73,7 +127,7 @@ export default function Home() {
           id="search"
           className="relative z-10 mx-auto -mt-8 max-w-6xl px-4 sm:px-6"
         >
-          <SearchFilters onSearch={fetchSpaces} />
+          <SearchFilters onSearch={handleSearch} />
         </section>
 
         {/* LISTINGS */}
@@ -82,34 +136,36 @@ export default function Home() {
           className="mx-auto max-w-7xl scroll-mt-24 px-4 py-20 sm:px-6 lg:px-8"
         >
 
+          {/* SECTION HEADER */}
           <div className="mb-10 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
 
             <div>
               <p className="mb-3 text-xs font-bold uppercase tracking-[0.25em] text-[#a85f3f]">
                 {activeLocation
                   ? `Spaces in ${activeLocation}`
-                  : "Discover"}
+                  : activeCategory
+                    ? categoryLabel[activeCategory]
+                    : "Discover"}
               </p>
 
               <h2 className="text-4xl font-bold tracking-tight text-[#1d2923] sm:text-5xl">
-                Find your next space.
+                {heading}
               </h2>
 
-              <p className="mt-3 max-w-xl text-gray-600">
-                Explore spaces listed by people across Zimbabwe.
+              <p className="mt-3 max-w-2xl text-gray-600">
+                {description}
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                setActiveLocation("");
-                fetchSpaces();
-              }}
-              className="self-start rounded-full border border-[#155c3a]/20 bg-white px-5 py-2.5 text-sm font-semibold text-[#155c3a] transition hover:bg-[#155c3a] hover:text-white sm:self-auto"
-            >
-              View all spaces
-            </button>
+            {(activeLocation || activeCategory) && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="self-start rounded-full border border-[#155c3a]/20 bg-white px-5 py-2.5 text-sm font-semibold text-[#155c3a] transition hover:bg-[#155c3a] hover:text-white sm:self-auto"
+              >
+                View all spaces
+              </button>
+            )}
 
           </div>
 
@@ -144,30 +200,34 @@ export default function Home() {
           ) : (
             <div className="rounded-[2rem] border border-[#155c3a]/10 bg-white px-6 py-20 text-center shadow-sm">
 
-              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#e5ad35]/15 text-4xl">
+              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#e5ad35]/15 text-4xl text-[#155c3a]">
                 <FontAwesomeIcon icon={faHouse} />
               </div>
 
               <h3 className="mt-6 text-2xl font-bold text-[#1d2923]">
                 {activeLocation
                   ? `No spaces found in ${activeLocation}.`
-                  : "Zimbabwe's spaces are coming."}
+                  : activeCategory === "student-accommodation"
+                    ? "Student spaces are coming."
+                    : activeCategory === "buy"
+                      ? "Properties for sale are coming."
+                      : activeCategory === "rent"
+                        ? "Rental spaces are coming."
+                        : "Zimbabwe's spaces are coming."}
               </h3>
 
               <p className="mx-auto mt-3 max-w-lg text-gray-500">
                 {activeLocation
                   ? "Try another location or explore all available spaces."
-                  : "We're getting RentSpace ready for property owners and renters across Zimbabwe."}
+                  : "We're getting RentSpace ready for property owners, buyers, renters and students across Zimbabwe."}
               </p>
 
               <div className="mt-7 flex flex-wrap justify-center gap-3">
 
-                {activeLocation && (
+                {(activeLocation || activeCategory) && (
                   <button
-                    onClick={() => {
-                      setActiveLocation("");
-                      fetchSpaces();
-                    }}
+                    type="button"
+                    onClick={clearFilters}
                     className="rounded-full border border-gray-200 px-6 py-3 font-semibold text-gray-700 transition hover:bg-gray-50"
                   >
                     View all spaces
@@ -376,7 +436,7 @@ export default function Home() {
 function MissionItem({ icon, title, text }) {
   return (
     <div>
-      <span className="text-3xl">
+      <span className="text-3xl text-[#155c3a]">
         <FontAwesomeIcon icon={icon} />
       </span>
 

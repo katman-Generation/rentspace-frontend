@@ -13,10 +13,8 @@ export default function Hero() {
           className="h-full w-full object-cover"
         />
 
-        {/* GREEN OVERLAY */}
         <div className="absolute inset-0 bg-[#0d3b2e]/75" />
 
-        {/* EXTRA DEPTH */}
         <div className="absolute inset-0 bg-gradient-to-r from-[#0d3b2e] via-[#0d3b2e]/70 to-[#0d3b2e]/30" />
 
         <div className="absolute inset-0 bg-gradient-to-t from-[#0d3b2e] via-transparent to-black/10" />
@@ -32,45 +30,65 @@ export default function Hero() {
       <div className="absolute left-[8%] top-28 h-2 w-2 rounded-full bg-white/30" />
 
       {/* CONTENT */}
-      <div className="relative mx-auto flex min-h-[620px] max-w-7xl items-center px-4 py-24 sm:px-6 lg:px-8">
+      <div className="relative mx-auto flex min-h-[650px] max-w-7xl items-center px-4 py-24 sm:px-6 lg:px-8">
 
-        <div className="max-w-3xl">
+        <div className="max-w-4xl">
 
           {/* EYEBROW */}
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 backdrop-blur-md">
-
             <span className="h-2 w-2 rounded-full bg-[#e5ad35]" />
 
             <span className="text-xs font-semibold uppercase tracking-[0.16em] text-white/85">
-              Zimbabwe's rental marketplace
+              Zimbabwe's property & space marketplace
             </span>
-
           </div>
 
           {/* HEADLINE */}
-          <h1 className="max-w-3xl text-5xl font-bold leading-[1.05] tracking-tight text-white sm:text-6xl lg:text-7xl">
-
+          <h1 className="max-w-4xl text-5xl font-bold leading-[1.05] tracking-tight text-white sm:text-6xl lg:text-7xl">
             Find a space
             <span className="block text-[#f5d98b]">
               that feels right.
             </span>
-
           </h1>
 
           {/* DESCRIPTION */}
           <p className="mt-7 max-w-2xl text-lg leading-8 text-white/75 sm:text-xl">
-            Discover homes, rooms, shops, offices, warehouses and spaces
-            across Zimbabwe all in one place.
+            Discover homes, apartments, rooms, student accommodation,
+            shops, offices, warehouses and more across Zimbabwe.
           </p>
 
-          {/* ACTIONS */}
-          <div className="mt-9 flex flex-wrap gap-4">
+          {/* MARKETPLACE ACTIONS */}
+          <div className="mt-9 grid max-w-3xl grid-cols-1 gap-3 sm:grid-cols-3">
+
+            <MarketplaceButton
+              to="/rent"
+              title="Rent"
+              description="Find a place to live"
+              primary
+            />
+
+            <MarketplaceButton
+              to="/buy"
+              title="Buy"
+              description="Find your next property"
+            />
+
+            <MarketplaceButton
+              to="/student-living"
+              title="Student Living"
+              description="Find accommodation near campus"
+            />
+
+          </div>
+
+          {/* SECONDARY ACTIONS */}
+          <div className="mt-5 flex flex-wrap gap-4">
 
             <a
               href="#search"
               className="group inline-flex items-center gap-3 rounded-full bg-[#e5ad35] px-7 py-3.5 font-bold text-[#0d3f29] shadow-xl transition duration-300 hover:-translate-y-1 hover:bg-[#f5d98b]"
             >
-              Start exploring
+              Explore all spaces
 
               <span className="transition-transform duration-300 group-hover:translate-x-1">
                 →
@@ -87,12 +105,10 @@ export default function Hero() {
           </div>
 
           {/* TRUST POINTS */}
-          <div className="mt-12 flex flex-wrap gap-x-8 gap-y-4">
-
+          <div className="mt-10 flex flex-wrap gap-x-8 gap-y-4">
             <TrustPoint text="Spaces across Zimbabwe" />
             <TrustPoint text="Connect directly" />
             <TrustPoint text="Built for Zimbabwe" />
-
           </div>
 
         </div>
@@ -113,7 +129,6 @@ export default function Hero() {
 
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
-              {/* AVAILABLE BADGE */}
               <div className="absolute left-3 top-3 rounded-full border border-white/20 bg-black/30 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-md">
                 Explore
               </div>
@@ -156,16 +171,56 @@ export default function Hero() {
   );
 }
 
+function MarketplaceButton({
+  to,
+  title,
+  description,
+  primary = false,
+}) {
+  return (
+    <Link
+      to={to}
+      className={`group rounded-2xl border p-4 backdrop-blur-md transition duration-300 hover:-translate-y-1 ${
+        primary
+          ? "border-[#e5ad35]/50 bg-[#e5ad35] text-[#0d3b2e] shadow-xl"
+          : "border-white/15 bg-white/10 text-white hover:bg-white/20"
+      }`}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-left">
+          <p className="text-sm font-bold">
+            {title}
+          </p>
+
+          <p
+            className={`mt-1 text-[11px] leading-4 ${
+              primary ? "text-[#0d3f29]/70" : "text-white/60"
+            }`}
+          >
+            {description}
+          </p>
+        </div>
+
+        <span
+          className={`text-lg transition-transform duration-300 group-hover:translate-x-1 ${
+            primary ? "text-[#0d3f29]" : "text-[#e5ad35]"
+          }`}
+        >
+          →
+        </span>
+      </div>
+    </Link>
+  );
+}
+
 function TrustPoint({ text }) {
   return (
     <div className="flex items-center gap-2 text-sm text-white/65">
-
       <span className="flex h-5 w-5 items-center justify-center rounded-full border border-[#e5ad35]/50 text-[10px] text-[#e5ad35]">
         ✓
       </span>
 
       {text}
-
     </div>
   );
 }

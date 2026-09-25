@@ -1,39 +1,58 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
-export default function ImagePicker({ images, setImages, max = 5 }) {
+export default function ImagePicker({
+  images,
+  setImages,
+  max = 5,
+}) {
   const inputRef = useRef(null);
-  const [previews, setPreviews] = useState([]);
+
+  const previews = useMemo(() => {
+    return images.map((img) =>
+      typeof img === "string"
+        ? img
+        : URL.createObjectURL(img)
+    );
+  }, [images]);
 
   useEffect(() => {
-    const objectUrls = images.map((img) =>
-      typeof img === "string" ? img : URL.createObjectURL(img)
-    );
-
-    setPreviews(objectUrls);
-
     return () => {
-      objectUrls.forEach((url, index) => {
+      previews.forEach((url, index) => {
         if (images[index] instanceof File) {
           URL.revokeObjectURL(url);
         }
       });
     };
-  }, [images]);
+  }, [previews, images]);
 
   const handleFiles = (e) => {
     const files = Array.from(e.target.files || []);
 
-    if (!files.length) return;
+    if (!files.length) {
+      return;
+    }
 
-    const allowed = files.slice(0, max - images.length);
+    const remainingSlots = max - images.length;
 
-    setImages([...images, ...allowed]);
+    const allowed = files.slice(
+      0,
+      remainingSlots
+    );
+
+    setImages([
+      ...images,
+      ...allowed,
+    ]);
 
     e.target.value = "";
   };
 
   const removeImage = (index) => {
-    setImages(images.filter((_, i) => i !== index));
+    setImages(
+      images.filter(
+        (_, i) => i !== index
+      )
+    );
   };
 
   const openPicker = () => {
@@ -45,7 +64,6 @@ export default function ImagePicker({ images, setImages, max = 5 }) {
   return (
     <div className="space-y-4">
 
-      {/* HEADER */}
       <div className="flex items-end justify-between gap-4">
 
         <div>
@@ -68,10 +86,8 @@ export default function ImagePicker({ images, setImages, max = 5 }) {
 
       </div>
 
-      {/* PHOTO GRID */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
 
-        {/* MAIN IMAGE */}
         {previews[0] && (
           <div className="group relative col-span-2 row-span-2 h-64 overflow-hidden rounded-3xl border border-black/5 bg-gray-100 shadow-sm">
 
@@ -82,11 +98,9 @@ export default function ImagePicker({ images, setImages, max = 5 }) {
             />
 
             <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 pt-12">
-
               <span className="rounded-full border border-white/20 bg-white/15 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-md">
                 Main photo
               </span>
-
             </div>
 
             <button
@@ -101,7 +115,6 @@ export default function ImagePicker({ images, setImages, max = 5 }) {
           </div>
         )}
 
-        {/* SECONDARY IMAGES */}
         {previews.slice(1).map((src, index) => {
 
           const actualIndex = index + 1;
@@ -120,7 +133,9 @@ export default function ImagePicker({ images, setImages, max = 5 }) {
 
               <button
                 type="button"
-                onClick={() => removeImage(actualIndex)}
+                onClick={() =>
+                  removeImage(actualIndex)
+                }
                 className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-xs text-white opacity-0 backdrop-blur-sm transition group-hover:opacity-100 hover:bg-red-500"
                 aria-label={`Remove photo ${actualIndex + 1}`}
               >
@@ -131,7 +146,6 @@ export default function ImagePicker({ images, setImages, max = 5 }) {
           );
         })}
 
-        {/* ADD PHOTO */}
         {images.length < max && (
           <button
             type="button"
@@ -152,7 +166,6 @@ export default function ImagePicker({ images, setImages, max = 5 }) {
 
       </div>
 
-      {/* HIDDEN INPUT */}
       <input
         ref={inputRef}
         type="file"

@@ -10,22 +10,21 @@ export default function Navbar() {
   const closeMenu = () => setMenuOpen(false);
 
   return (
-    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
-
-        <div className="h-18 min-h-[72px] flex items-center justify-between">
+    <header className="sticky top-0 z-50 border-b border-gray-100 bg-white/95 backdrop-blur-md">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <div className="flex min-h-[72px] items-center justify-between">
 
           {/* LOGO */}
           <Link
             to="/"
             onClick={closeMenu}
-            className="flex items-center gap-3 group"
+            className="group flex items-center gap-3"
           >
-            <div className="w-11 h-11 rounded-full bg-[#0d3b2e] flex items-center justify-center shadow-sm group-hover:scale-105 transition">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#0d3b2e] shadow-sm transition group-hover:scale-105">
               <img
                 src={logo}
                 alt="RentSpace"
-                className="w-8 h-8 object-contain"
+                className="h-8 w-8 object-contain"
               />
             </div>
 
@@ -34,17 +33,29 @@ export default function Navbar() {
                 RentSpace
               </span>
 
-              <span className="hidden sm:block text-[10px] text-gray-400 uppercase tracking-[0.18em] mt-1">
+              <span className="mt-1 hidden text-[10px] uppercase tracking-[0.18em] text-gray-400 sm:block">
                 Find your space
               </span>
             </div>
           </Link>
 
           {/* DESKTOP NAV */}
-          <nav className="hidden md:flex items-center gap-8">
+          <nav className="hidden items-center gap-7 md:flex">
 
             <NavItem to="/">
               Explore
+            </NavItem>
+
+            <NavItem to="/buy">
+              Buy
+            </NavItem>
+
+            <NavItem to="/rent">
+              Rent
+            </NavItem>
+
+            <NavItem to="/student-living">
+              Student Living
             </NavItem>
 
             <NavItem to="/about">
@@ -66,20 +77,20 @@ export default function Navbar() {
           </nav>
 
           {/* DESKTOP ACTIONS */}
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden items-center gap-3 md:flex">
 
             {!user ? (
               <>
                 <Link
                   to="/login"
-                  className="px-4 py-2.5 text-sm font-semibold text-gray-700 hover:text-[#0d3b2e] transition"
+                  className="px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:text-[#0d3b2e]"
                 >
                   Log in
                 </Link>
 
                 <Link
                   to="/register"
-                  className="px-5 py-2.5 bg-[#0d3b2e] hover:bg-[#124b3a] !text-[#e5ad35] hover:text-[#f5d98b] text-sm font-semibold rounded-full transition shadow-sm"
+                  className="rounded-full bg-[#0d3b2e] px-5 py-2.5 text-sm font-semibold !text-[#e5ad35] shadow-sm transition hover:bg-[#124b3a] hover:text-[#f5d98b]"
                 >
                   Create account
                 </Link>
@@ -88,7 +99,7 @@ export default function Navbar() {
               <>
                 <Link
                   to="/post-space"
-                  className="px-5 py-2.5 border border-[#0d3b2e] text-[#0d3b2e] hover:bg-[#0d3b2e] hover:text-white text-sm font-semibold rounded-full transition"
+                  className="rounded-full border border-[#0d3b2e] px-5 py-2.5 text-sm font-semibold text-[#0d3b2e] transition hover:bg-[#0d3b2e] hover:text-white"
                 >
                   + List a Space
                 </Link>
@@ -96,33 +107,33 @@ export default function Navbar() {
                 <div className="relative group">
                   <Link
                     to="/profile"
-                    className="w-10 h-10 rounded-full bg-[#e0b84b] text-[#0d3b2e] flex items-center justify-center font-bold"
+                    className="flex h-10 w-10 items-center justify-center rounded-full bg-[#e0b84b] font-bold text-[#0d3b2e]"
                   >
                     {(user.first_name || user.email || "U")
                       .charAt(0)
                       .toUpperCase()}
                   </Link>
 
-                  <div className="absolute right-0 top-full pt-3 hidden group-hover:block">
-                    <div className="bg-white border border-gray-100 rounded-2xl shadow-xl p-2 w-44">
+                  <div className="absolute right-0 top-full hidden pt-3 group-hover:block">
+                    <div className="w-44 rounded-2xl border border-gray-100 bg-white p-2 shadow-xl">
 
                       <Link
                         to="/profile"
-                        className="block px-4 py-2.5 rounded-xl text-sm hover:bg-gray-50"
+                        className="block rounded-xl px-4 py-2.5 text-sm hover:bg-gray-50"
                       >
                         My Profile
                       </Link>
 
                       <Link
                         to="/post-space"
-                        className="block px-4 py-2.5 rounded-xl text-sm hover:bg-gray-50"
+                        className="block rounded-xl px-4 py-2.5 text-sm hover:bg-gray-50"
                       >
                         List a Space
                       </Link>
 
                       <button
                         onClick={logout}
-                        className="w-full text-left px-4 py-2.5 rounded-xl text-sm text-red-600 hover:bg-red-50"
+                        className="w-full rounded-xl px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50"
                       >
                         Log out
                       </button>
@@ -137,9 +148,10 @@ export default function Navbar() {
 
           {/* MOBILE BUTTON */}
           <button
-            onClick={() => setMenuOpen(!menuOpen)}
-            className="md:hidden w-11 h-11 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition"
-            aria-label="Toggle menu"
+            onClick={() => setMenuOpen((open) => !open)}
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-gray-200 transition hover:bg-gray-50 md:hidden"
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={menuOpen}
           >
             {menuOpen ? (
               <span className="text-xl">×</span>
@@ -152,7 +164,7 @@ export default function Navbar() {
 
         {/* MOBILE MENU */}
         {menuOpen && (
-          <div className="md:hidden pb-5 pt-2 border-t border-gray-100">
+          <div className="border-t border-gray-100 pb-5 pt-3 md:hidden">
 
             <div className="flex flex-col gap-1">
 
@@ -162,6 +174,37 @@ export default function Navbar() {
               >
                 Explore
               </MobileNavItem>
+
+              {/* MARKETPLACE */}
+              <div className="mt-2 px-4 pb-1 pt-2 text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400">
+                Find a space
+              </div>
+
+              <MobileNavItem
+                to="/buy"
+                onClick={closeMenu}
+              >
+                Buy Property
+              </MobileNavItem>
+
+              <MobileNavItem
+                to="/rent"
+                onClick={closeMenu}
+              >
+                Rent a Space
+              </MobileNavItem>
+
+              <MobileNavItem
+                to="/student-living"
+                onClick={closeMenu}
+              >
+                Student Living
+              </MobileNavItem>
+
+              {/* GENERAL */}
+              <div className="mt-2 px-4 pb-1 pt-2 text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400">
+                RentSpace
+              </div>
 
               <MobileNavItem
                 to="/about"
@@ -176,8 +219,9 @@ export default function Navbar() {
                     to="/profile"
                     onClick={closeMenu}
                   >
-                    My Profile
+                    My Spaces
                   </MobileNavItem>
+
                   <MobileNavItem
                     to="/messages"
                     onClick={closeMenu}
@@ -189,7 +233,7 @@ export default function Navbar() {
                     to="/post-space"
                     onClick={closeMenu}
                   >
-                    List a Space
+                    + List a Space
                   </MobileNavItem>
 
                   <button
@@ -197,7 +241,7 @@ export default function Navbar() {
                       logout();
                       closeMenu();
                     }}
-                    className="text-left px-4 py-3 rounded-xl text-red-600 hover:bg-red-50"
+                    className="rounded-xl px-4 py-3 text-left text-red-600 hover:bg-red-50"
                   >
                     Log out
                   </button>
@@ -210,7 +254,7 @@ export default function Navbar() {
                   <Link
                     to="/login"
                     onClick={closeMenu}
-                    className="text-center border border-gray-200 py-3 rounded-full font-semibold"
+                    className="rounded-full border border-gray-200 py-3 text-center font-semibold"
                   >
                     Log in
                   </Link>
@@ -218,7 +262,7 @@ export default function Navbar() {
                   <Link
                     to="/register"
                     onClick={closeMenu}
-                    className="text-center bg-[#0d3b2e] text-[#f5d98b] py-3 rounded-full font-semibold"
+                    className="rounded-full bg-[#0d3b2e] py-3 text-center font-semibold text-[#f5d98b]"
                   >
                     Create account
                   </Link>
@@ -230,7 +274,6 @@ export default function Navbar() {
 
           </div>
         )}
-
       </div>
     </header>
   );
@@ -241,7 +284,7 @@ function NavItem({ to, children }) {
     <NavLink
       to={to}
       className={({ isActive }) =>
-        `text-sm font-semibold transition ${
+        `relative py-2 text-sm font-semibold transition ${
           isActive
             ? "text-[#0d3b2e]"
             : "text-gray-500 hover:text-[#0d3b2e]"
@@ -259,9 +302,9 @@ function MobileNavItem({ to, children, onClick }) {
       to={to}
       onClick={onClick}
       className={({ isActive }) =>
-        `px-4 py-3 rounded-xl font-medium transition ${
+        `rounded-xl px-4 py-3 font-medium transition ${
           isActive
-            ? "bg-[#eef4f1] text-[#0d3b2e]"
+            ? "bg-[#eef4f1] font-semibold text-[#0d3b2e]"
             : "text-gray-700 hover:bg-gray-50"
         }`
       }
