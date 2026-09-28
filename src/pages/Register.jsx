@@ -14,6 +14,9 @@ export default function Register() {
   const [email, setEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -26,6 +29,11 @@ export default function Register() {
       setError(
         "Please agree to the Terms & Conditions and acknowledge the Privacy Policy."
       );
+      setLoading(false);
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Passwords do not match. Please check your password and try again.");
       setLoading(false);
       return;
     }
@@ -211,26 +219,89 @@ export default function Register() {
             Password
           </label>
 
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Create a strong password"
-            required
-            autoComplete="new-password"
-            className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3.5 text-sm outline-none transition placeholder:text-gray-400 focus:border-[#155c3a] focus:ring-4 focus:ring-[#155c3a]/10"
-          />
+          <div className="relative">
+            <input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Create a strong password"
+              required
+              autoComplete="new-password"
+              className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3.5 pr-14 text-sm outline-none transition placeholder:text-gray-400 focus:border-[#155c3a] focus:ring-4 focus:ring-[#155c3a]/10"
+            />
+
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400 transition hover:text-[#155c3a]"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? "Hide" : "Show"}
+            </button>
+          </div>
 
           <p className="mt-2 text-xs text-gray-400">
             Use a strong password with at least 8 characters.
           </p>
         </div>
 
+        {/* Confirm Password */}
+        <div>
+          <label
+            htmlFor="confirmPassword"
+            className="mb-2 block text-sm font-semibold text-[#1d2923]"
+          >
+            Confirm password
+          </label>
+
+          <div className="relative">
+            <input
+              id="confirmPassword"
+              type={showConfirmPassword ? "text" : "password"}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Enter your password again"
+              required
+              autoComplete="new-password"
+              className={`w-full rounded-2xl border bg-white px-4 py-3.5 pr-14 text-sm outline-none transition placeholder:text-gray-400 focus:ring-4 ${
+                confirmPassword && password !== confirmPassword
+                  ? "border-red-300 focus:border-red-400 focus:ring-red-400/10"
+                  : confirmPassword && password === confirmPassword
+                  ? "border-green-300 focus:border-green-400 focus:ring-green-400/10"
+                  : "border-gray-200 focus:border-[#155c3a] focus:ring-[#155c3a]/10"
+              }`}
+            />
+
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400 transition hover:text-[#155c3a]"
+              aria-label={
+                showConfirmPassword ? "Hide confirm password" : "Show confirm password"
+              }
+            >
+              {showConfirmPassword ? "Hide" : "Show"}
+            </button>
+          </div>
+
+          {confirmPassword && password !== confirmPassword && (
+            <p className="mt-2 text-xs text-red-500">
+              Passwords do not match.
+            </p>
+          )}
+
+          {confirmPassword && password === confirmPassword && (
+            <p className="mt-2 text-xs text-green-600">
+              Passwords match.
+            </p>
+          )}
+        </div>
+
         {/* Submit */}
         <button
           type="submit"
-          disabled={loading || !agreedToTerms}
+          disabled={loading || !agreedToTerms || password !== confirmPassword || !password || !confirmPassword}
           className="group mt-2 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#155c3a] px-5 py-4 font-semibold text-white shadow-lg transition duration-300 hover:-translate-y-0.5 hover:bg-[#0d3f29] hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60"
         >
           {loading ? "Creating account..." : "Create account"}
