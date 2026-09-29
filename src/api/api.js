@@ -49,6 +49,9 @@ const clearAuthTokens = () => {
   localStorage.removeItem("refresh");
 };
 
+export const getDashboard = () =>
+  api.get("/api/spaces/dashboard/");
+
 
 // ============================================================
 // ACCESS TOKEN REFRESH
