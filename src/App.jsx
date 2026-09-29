@@ -14,6 +14,7 @@ import Privacy from './pages/Privacy';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import ProtectedRoute from './components/ProtectedRoute';
+import AdminDashboard from './pages/AdminDashboard';
 
 export default function App() {
   return (
@@ -43,6 +44,12 @@ export default function App() {
               <PrivateRoute>
                 <PostSpace />
               </PrivateRoute>
+            }
+          />
+          <Route
+            path="/dashboard"
+            element={
+                <AdminDashboard />
             }
           />
 
