@@ -52,6 +52,40 @@ export default function Messages() {
   }, []);
 
   // --------------------------------------------------
+  // Sort conversations
+  // --------------------------------------------------
+  const sortedConversations = useMemo(() => {
+    return [...conversations].sort((a, b) => {
+      const unreadA = Number(a.unread_count || 0);
+      const unreadB = Number(b.unread_count || 0);
+
+      // Unread conversations come first.
+      if (unreadA !== unreadB) {
+        return unreadB - unreadA;
+      }
+
+      const messagesA = a.messages || [];
+      const messagesB = b.messages || [];
+
+      const latestA =
+        messagesA.length > 0
+          ? new Date(
+              messagesA[messagesA.length - 1].created_at
+            ).getTime()
+          : new Date(a.updated_at || a.created_at).getTime();
+
+      const latestB =
+        messagesB.length > 0
+          ? new Date(
+              messagesB[messagesB.length - 1].created_at
+            ).getTime()
+          : new Date(b.updated_at || b.created_at).getTime();
+
+      return latestB - latestA;
+    });
+  }, [conversations]);
+
+  // --------------------------------------------------
   // Load one conversation
   // --------------------------------------------------
   const loadConversation = useCallback(
@@ -72,19 +106,7 @@ export default function Messages() {
         const newConversation = res.data;
         const newMessages = newConversation?.messages || [];
 
-        setConversation((current) => {
-          if (!current) {
-            return newConversation;
-          }
-
-          return {
-            ...current,
-            ...newConversation,
-            messages: newMessages,
-          };
-        });
-
-        // Mark unread messages as read
+        // Check unread incoming messages before marking them read.
         const unreadMessages = newMessages.filter(
           (message) =>
             !message.is_read &&
@@ -103,32 +125,59 @@ export default function Messages() {
             )
           );
 
+          // Reflect the read state immediately in the open chat.
+          const readMessageIds = new Set(
+            unreadMessages.map((message) => message.id)
+          );
+
+          newConversation.messages = newMessages.map(
+            (message) =>
+              readMessageIds.has(message.id)
+                ? { ...message, is_read: true }
+                : message
+          );
+
+          newConversation.unread_count = 0;
+
+          // Update conversation list immediately.
           setConversations((current) =>
             current.map((item) =>
               item.id === Number(id)
                 ? {
                     ...item,
-                    last_message: item.last_message
-                      ? {
-                          ...item.last_message,
-                          is_read: true,
-                        }
-                      : item.last_message,
+                    unread_count: 0,
+                    messages: item.messages
+                      ? item.messages.map((message) =>
+                          readMessageIds.has(message.id)
+                            ? {
+                                ...message,
+                                is_read: true,
+                              }
+                            : message
+                        )
+                      : item.messages,
                   }
                 : item
             )
           );
         }
+
+        setConversation((current) => {
+          if (!current) {
+            return newConversation;
+          }
+
+          return {
+            ...current,
+            ...newConversation,
+            messages: newConversation.messages || [],
+          };
+        });
       } catch (err) {
-        console.error(
-          "Failed to load conversation:",
-          err
-        );
+        console.error("Failed to load conversation:", err);
 
         if (!silent) {
-          setError(
-            "Unable to load this conversation."
-          );
+          setError("Unable to load this conversation.");
         }
       } finally {
         if (!silent) {
@@ -160,11 +209,6 @@ export default function Messages() {
 
     const parsedId = Number(conversationParam);
 
-    // Reject invalid values such as:
-    // undefined
-    // null
-    // ""
-    // abc
     if (!Number.isInteger(parsedId) || parsedId <= 0) {
       console.warn(
         "Ignoring invalid conversation ID:",
@@ -218,8 +262,8 @@ export default function Messages() {
       return;
     }
 
-    // First load of a conversation:
-    // go to the bottom once.
+    // Scroll to the bottom only once when opening
+    // a conversation.
     if (firstConversationLoadRef.current) {
       firstConversationLoadRef.current = false;
       previousMessageCountRef.current = messages.length;
@@ -233,44 +277,58 @@ export default function Messages() {
       return;
     }
 
-    const previousCount =
-      previousMessageCountRef.current;
-
+    const previousCount = previousMessageCountRef.current;
     const currentCount = messages.length;
 
-    // Only scroll when a NEW message was actually added.
-    if (currentCount > previousCount) {
-      const container = messagesContainerRef.current;
+    // Nothing new arrived.
+    if (currentCount <= previousCount) {
+      previousMessageCountRef.current = currentCount;
+      return;
+    }
 
-      if (container) {
-        const distanceFromBottom =
-          container.scrollHeight -
-          container.scrollTop -
-          container.clientHeight;
+    // Find messages added since the previous render.
+    const newMessages = messages.slice(previousCount);
 
-        // Only auto-scroll if the user was already
-        // close to the bottom.
-        if (distanceFromBottom < 150) {
-          requestAnimationFrame(() => {
-            messagesEndRef.current?.scrollIntoView({
-              behavior: "smooth",
-            });
+    // Only automatically follow incoming messages.
+    const hasIncomingMessage = newMessages.some(
+      (message) => message.sender_email !== user?.email
+    );
+
+    const container = messagesContainerRef.current;
+
+    if (container && hasIncomingMessage) {
+      const distanceFromBottom =
+        container.scrollHeight -
+        container.scrollTop -
+        container.clientHeight;
+
+      // Only follow the message if the user was
+      // already close to the bottom.
+      if (distanceFromBottom < 150) {
+        requestAnimationFrame(() => {
+          messagesEndRef.current?.scrollIntoView({
+            behavior: "smooth",
           });
-        }
+        });
       }
     }
 
     previousMessageCountRef.current = currentCount;
-  }, [conversation]);
+  }, [conversation, user?.email]);
 
   // --------------------------------------------------
   // Select conversation
   // --------------------------------------------------
   const selectConversation = (id) => {
-    if (!id) return;
+    if (!id) {
+      return;
+    }
 
     setError("");
-    setSearchParams({ conversation: String(id) });
+
+    setSearchParams({
+      conversation: String(id),
+    });
   };
 
   // --------------------------------------------------
@@ -282,6 +340,22 @@ export default function Messages() {
     const content = messageText.trim();
 
     if (!content || !selectedId || sending) {
+      return;
+    }
+
+    // Prevent messaging yourself.
+    const isRenter =
+      conversation?.renter_email === user?.email;
+
+    const otherPersonEmail = isRenter
+      ? conversation?.owner_email
+      : conversation?.renter_email;
+
+    if (
+      !otherPersonEmail ||
+      otherPersonEmail === user?.email
+    ) {
+      setError("You cannot send a message to yourself.");
       return;
     }
 
@@ -298,7 +372,9 @@ export default function Messages() {
 
       // Add the new message immediately.
       setConversation((current) => {
-        if (!current) return current;
+        if (!current) {
+          return current;
+        }
 
         return {
           ...current,
@@ -309,7 +385,7 @@ export default function Messages() {
         };
       });
 
-      // Clear ONLY after successful send.
+      // Clear after successful send.
       setMessageText("");
 
       // Keep focus in the input.
@@ -321,6 +397,7 @@ export default function Messages() {
       await loadConversations();
     } catch (err) {
       console.error("Failed to send message:", err);
+
       setError(
         err?.response?.data?.content?.[0] ||
           "Unable to send your message."
@@ -334,7 +411,9 @@ export default function Messages() {
   // Current conversation information
   // --------------------------------------------------
   const conversationTitle = useMemo(() => {
-    if (!conversation) return "";
+    if (!conversation) {
+      return "";
+    }
 
     if (conversation.space_title) {
       return conversation.space_title;
@@ -348,14 +427,20 @@ export default function Messages() {
   }, [conversation]);
 
   const otherPerson = useMemo(() => {
-    if (!conversation || !user) return "User";
+    if (!conversation || !user) {
+      return "User";
+    }
 
     const isRenter =
       conversation.renter_email === user.email;
 
     return isRenter
-      ? conversation.owner_name || conversation.owner_email || "Owner"
-      : conversation.renter_name || conversation.renter_email || "Renter";
+      ? conversation.owner_name ||
+          conversation.owner_email ||
+          "Owner"
+      : conversation.renter_name ||
+          conversation.renter_email ||
+          "Renter";
   }, [conversation, user]);
 
   return (
@@ -410,7 +495,7 @@ export default function Messages() {
               </div>
             ) : (
               <div className="max-h-[600px] overflow-y-auto">
-                {conversations.map((item) => {
+                {sortedConversations.map((item) => {
                   const active = item.id === selectedId;
 
                   const title =
@@ -427,15 +512,28 @@ export default function Messages() {
                         item.renter_email ||
                         "Renter";
 
+                  const itemMessages = item.messages || [];
+
+                  const lastMessage =
+                    itemMessages[itemMessages.length - 1];
+
+                  const unreadCount = Number(
+                    item.unread_count || 0
+                  );
+
                   return (
                     <button
                       key={item.id}
                       type="button"
-                      onClick={() => selectConversation(item.id)}
+                      onClick={() =>
+                        selectConversation(item.id)
+                      }
                       className={`w-full border-b border-gray-100 px-5 py-4 text-left transition ${
                         active
                           ? "bg-[#eef4f1]"
-                          : "hover:bg-gray-50"
+                          : unreadCount > 0
+                            ? "bg-[#fffaf0] hover:bg-[#fff6df]"
+                            : "hover:bg-gray-50"
                       }`}
                     >
                       <div className="flex items-start justify-between gap-3">
@@ -448,18 +546,29 @@ export default function Messages() {
                             {person}
                           </p>
 
-                          {item.last_message?.content && (
-                            <p className="mt-1 truncate text-xs text-gray-400">
-                              {item.last_message.content}
+                          {lastMessage?.content && (
+                            <p
+                              className={`mt-1 truncate text-xs ${
+                                unreadCount > 0
+                                  ? "font-semibold text-[#155c3a]"
+                                  : "text-gray-400"
+                              }`}
+                            >
+                              {lastMessage.content}
                             </p>
                           )}
                         </div>
 
-                        {!item.last_message?.is_read &&
-                          item.last_message?.sender_email !==
-                            user?.email && (
-                            <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-[#e0b84b]" />
-                          )}
+                        {unreadCount > 0 && (
+                          <div className="flex shrink-0 items-center gap-1.5">
+                            <span className="rounded-full bg-red-500 px-2 py-1 text-[10px] font-bold text-white">
+                              {unreadCount > 99
+                                ? "99+"
+                                : unreadCount}{" "}
+                              NEW
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </button>
                   );
@@ -480,8 +589,7 @@ export default function Messages() {
                   </h2>
 
                   <p className="mt-2 max-w-sm text-sm text-gray-500">
-                    Choose a conversation from the left to start
-                    messaging.
+                    Choose a conversation from the left to start messaging.
                   </p>
                 </div>
               </div>
@@ -514,7 +622,10 @@ export default function Messages() {
                 </div>
 
                 {/* Messages */}
-                <div ref={messagesContainerRef} className="flex-1 space-y-4 overflow-y-auto p-5 sm:p-6">
+                <div
+                  ref={messagesContainerRef}
+                  className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5 sm:p-6"
+                >
                   {(conversation.messages || []).map((message) => {
                     const mine =
                       message.sender_email === user?.email;
@@ -532,9 +643,17 @@ export default function Messages() {
                           className={`max-w-[80%] rounded-2xl px-4 py-3 ${
                             mine
                               ? "rounded-br-md bg-[#155c3a] text-white"
-                              : "rounded-bl-md bg-[#f3f3ef] text-gray-800"
+                              : !message.is_read
+                                ? "rounded-bl-md border border-[#e0b84b] bg-[#fff8df] text-gray-800 shadow-sm"
+                                : "rounded-bl-md bg-[#f3f3ef] text-gray-800"
                           }`}
                         >
+                          {!mine && !message.is_read && (
+                            <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-[#a87800]">
+                              New message
+                            </div>
+                          )}
+
                           <p className="whitespace-pre-wrap break-words text-sm">
                             {message.content}
                           </p>

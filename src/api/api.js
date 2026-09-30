@@ -253,5 +253,8 @@ export const updateSpace = (id, data) =>
 export const getMySpaces = () =>
   api.get("/api/spaces/my-spaces/");
 
+export const getUnreadMessageCount = () =>
+  api.get("/api/chat/unread-count/");
+
 
 export default api;

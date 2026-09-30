@@ -1,13 +1,57 @@
 import { Link, NavLink } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import logo from "../assets/logo.png";
 import { useAuth } from "../context/useAuth";
+import { getUnreadMessageCount } from "../api/api";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const closeMenu = () => setMenuOpen(false);
+
+  useEffect(() => {
+    if (!user) {
+      return undefined;
+    }
+
+    let isMounted = true;
+
+    const loadUnreadCount = async () => {
+      try {
+        const response = await getUnreadMessageCount();
+
+        if (isMounted) {
+          setUnreadCount(
+            Number(response?.data?.unread_count || 0)
+          );
+        }
+      } catch (error) {
+        console.error(
+          "Failed to load unread message count:",
+          error
+        );
+      }
+    };
+
+    loadUnreadCount();
+
+    const interval = setInterval(
+      loadUnreadCount,
+      5000
+    );
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [user]);
+
+  const displayUnreadCount =
+    user && unreadCount > 99
+      ? "99+"
+      : unreadCount;
 
   return (
     <header className="sticky top-0 z-50 border-b border-gray-100 bg-white/95 backdrop-blur-md">
@@ -69,7 +113,15 @@ export default function Navbar() {
                 </NavItem>
 
                 <NavItem to="/messages">
-                  Messages
+                  <span className="relative inline-flex items-center">
+                    Messages
+
+                    {unreadCount > 0 && (
+                      <span className="ml-2 inline-flex min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+                        {displayUnreadCount}
+                      </span>
+                    )}
+                  </span>
                 </NavItem>
               </>
             )}
@@ -150,7 +202,11 @@ export default function Navbar() {
           <button
             onClick={() => setMenuOpen((open) => !open)}
             className="flex h-11 w-11 items-center justify-center rounded-full border border-gray-200 transition hover:bg-gray-50 md:hidden"
-            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            aria-label={
+              menuOpen
+                ? "Close menu"
+                : "Open menu"
+            }
             aria-expanded={menuOpen}
           >
             {menuOpen ? (
@@ -226,7 +282,15 @@ export default function Navbar() {
                     to="/messages"
                     onClick={closeMenu}
                   >
-                    Messages
+                    <span className="flex items-center justify-between">
+                      <span>Messages</span>
+
+                      {unreadCount > 0 && (
+                        <span className="inline-flex min-w-[22px] items-center justify-center rounded-full bg-red-500 px-1.5 py-1 text-[10px] font-bold leading-none text-white">
+                          {displayUnreadCount}
+                        </span>
+                      )}
+                    </span>
                   </MobileNavItem>
 
                   <MobileNavItem
@@ -296,7 +360,11 @@ function NavItem({ to, children }) {
   );
 }
 
-function MobileNavItem({ to, children, onClick }) {
+function MobileNavItem({
+  to,
+  children,
+  onClick,
+}) {
   return (
     <NavLink
       to={to}
