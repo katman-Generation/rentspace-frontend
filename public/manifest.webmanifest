@@ -1,0 +1,19 @@
+{
+  "name": "RentSpace Zimbabwe",
+  "short_name": "RentSpace",
+  "description": "Find beautiful spaces to rent or buy in Zimbabwe.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f8f4e9",
+  "theme_color": "#0d3b2e",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
